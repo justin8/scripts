@@ -1,0 +1,35 @@
+#!/bin/bash
+
+BACKUPDIR=/raid/shares/backups/Linux
+DATE=`date +%Y-%m-%d`
+LOG=/var/log/backup-system.log
+
+exec > >(tee ${LOG})
+
+if [ $# -lt 1 ] ; then
+	echo "${DATE}You must specify which machine to make an image of, or multiple machines."
+	exit 1
+fi
+
+echo "" > ${LOG}
+
+for var in $@
+do
+	case "${var}" in
+		abachi)
+			echo -n "${DATE} Backing up abachi... "
+			dd if=`mount|grep "on / type"|grep -o "/dev/sd[a-z]"` of=${BACKUPDIR}/abachi.img.${DATE} bs=1M 2>>${LOG}
+			rc=$?
+			[[ $rc == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+			[[ $rc != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details";;
+		bloodwood|birch|mahogany)
+			echo -n "Backing up ${var}..."
+			cp /raid/virtual-machines/${var}.qed ${BACKUPDIR}/${var}.qed.${DATE} 2>>${LOG}
+			rc=$?
+			[[ $rc == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+			[[ $rc != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details";;
+		*) echo "${var} is unknown; skipping."
+	esac
+done
+
+exit 0
