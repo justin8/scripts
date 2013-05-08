@@ -16,7 +16,7 @@ recordings
 tv
 EOF
 
-LOCK=/run/lock/backup
+LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
 
