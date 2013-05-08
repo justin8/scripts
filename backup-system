@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 BACKUPDIR=/raid/shares/backups/Linux
 DATE=`date +%Y-%m-%d`
@@ -22,16 +22,12 @@ do
 			rc=$?
 			[[ $rc == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
 			[[ $rc != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details";;
-			chown downloads. ${BACKUPDIR}/abachi.img.${DATE}
-			chmod 770 ${BACKUPDIR}/abachi.img.${DATE}
 		bloodwood|birch|mahogany)
 			echo -n "Backing up ${var}..."
 			cp /raid/virtual-machines/${var}.qed ${BACKUPDIR}/${var}.qed.${DATE} 2>>${LOG}
 			rc=$?
 			[[ $rc == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
 			[[ $rc != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details";;
-			chown downloads. ${BACKUPDIR}/${var}.qed.${DATE}
-			chmod 770 ${BACKUPDIR}/${var}.qed.${DATE}
 		*) echo "${var} is unknown; skipping."
 	esac
 done
