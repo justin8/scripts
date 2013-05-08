@@ -16,6 +16,11 @@ recordings
 tv
 EOF
 
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
 LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then

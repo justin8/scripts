@@ -6,6 +6,11 @@ LOG=/var/log/backup-system.log
 
 exec > >(tee ${LOG})
 
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
 if [ $# -lt 1 ] ; then
 	echo "${DATE}You must specify which machine to make an image of, or multiple machines."
 	exit 1
