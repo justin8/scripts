@@ -1,0 +1,5 @@
+#!/bin/bash
+function check {
+	[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+	[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details"
+}
