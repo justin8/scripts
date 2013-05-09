@@ -24,6 +24,7 @@ function rsync-check {
 	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
 	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for ${DATE} may be corrupt."
 }
+
 function remove-backup {
 	echo `clock`"Clean Up: ${1} backup has been detected as over 30 days old"
 	if [ "x${cleanup}" = "x" ]
@@ -82,7 +83,7 @@ if flock -xn 200; then
 		echo `clock`"Using ${backup_previous} for hardlinks"
 		rsync -a --stats --delete --delete-excluded --exclude-from=${exclude} \
 			--link-dest=${backup_previous} ${backup_source} ${backup_current}
-		rync-check $?
+		rsync-check $?
 	else
 		echo `clock`"No previous backup detected in ${backup_host_dir}. Creating new full backup set"
 		rsync -a --stats --delete --delete-excluded --exclude-from=$exclude \
@@ -90,9 +91,9 @@ if flock -xn 200; then
 		rsync-check $?
 	fi
 
-	echo `clock`"Syncing filesystems... "
+	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
-	echo -e `clock`"Removing bind mount... "
+	echo -n `clock`"Removing bind mount... "
 	umount ${backup_source}; check $?
 
 	echo `clock`"Clean Up: Starting..."
