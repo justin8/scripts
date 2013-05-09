@@ -18,7 +18,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Functions
-. lib/check
+. `dirname "$0"`/lib/check
 clock () { echo -n "[`date +%H:%M:%S`] "; }
 function rsync-check {
 	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
