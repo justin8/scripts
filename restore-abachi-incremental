@@ -98,7 +98,7 @@ if flock -xn 200; then
 	fi
 
 	echo -n `clock`"Creating filesystem... "
-	mkfs.ext4 -m 0 -L ${HOST}-root ${restore_device}1 > /dev/null
+	mkfs.ext4 -m 0 -L ${HOST}-root ${restore_device}1 > /dev/null 2>&1
 	check $? quit
 	[[ ${DEBUG} == 0 ]] && read
 
