@@ -70,7 +70,7 @@ if flock -xn 200; then
 	mount -o bind / ${backup_source}
 	check $?
 
-	backup_previous=`ls -d1 ${backup_host_dir}/* | sort -n | tail -1`
+	backup_previous=`ls -d1 ${backup_host_dir}/20* | sort -n | tail -1`
 	if [ ${backup_previous} ]
 	then
 		echo `clock`"Using ${backup_previous} for hardlinks"
