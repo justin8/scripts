@@ -60,6 +60,12 @@ if flock -xn 200; then
 		exit 1
 	fi
 
+	if [ -e ${backup_current} ]
+	then
+		echo "${DATE} A backup in ${backup_current} already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
+		exit 1
+	fi
+
 	echo -e "-----------------------| Starting backup of ${backup_host} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------" > ${LOG}
 
 	echo `clock`"Starting backup of ${backup_host} to ${backup_current}"
@@ -94,6 +100,7 @@ if flock -xn 200; then
 	do
 		remove-backup ${i}
 	done
+	echo `clock`"Clean Up: Completed"
 
 else
 	echo "${DATE} Lock file ${LOCK} present. Aborting"
