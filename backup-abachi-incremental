@@ -9,7 +9,7 @@
 HOST="abachi"
 BACKUPDIR=/raid/shares/backups/Linux
 DATE=`date +%Y-%m-%d`
-LOG="/var/log/system-backup-incremental.log"
+LOG="/var/log/backup-${HOST}-incremental.log"
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
