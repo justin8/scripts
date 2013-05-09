@@ -1,0 +1,122 @@
+#!/bin/zsh
+
+HOST="abachi"
+BACKUPDIR=/raid/shares/backups/Linux
+DATE=`date +%Y-%m-%d`
+LOG="/var/log/restore-${HOST}-incremental.log"
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+if [ $# -lt 2 ] ; then
+	echo "USAGE: `basename $0` DATE DESTINATION"
+	echo "You must specify a date to restore from, in the format 'YYYY-MM-DD'"
+	echo "A destination is also mandatory; please specify the root block device (e.g. /dev/sdb)"
+	exit 1
+fi
+
+if [ $# -gt 2 ] && [ $3 == DEBUG ] ; then
+	echo "DEBUG MODE ENABLED"
+	DEBUG=0
+fi
+
+
+# Functions
+. lib/check
+clock () { echo -n "[`date +%H:%M:%S`] "; }
+function rsync-check {
+	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
+	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for ${DATE} may be corrupt."
+}
+
+exec > >(tee ${LOG})
+LOCK=/run/lock/`basename $0`
+exec 200>${LOCK}
+if flock -xn 200; then
+	echo "" > ${LOG}
+
+	backup_host_dir="${BACKUPDIR}/${HOST}"
+	restore_source="${backup_host_dir}/${1}"
+	restore_device="${2}"
+	restore_destination="/tmp/${HOST}-restore"
+
+	if [ `echo ${1} | grep -o "^20"` != 20 ]
+	then
+		echo "${DATE} The specified restore date does not appear to be valid. Aborting"
+		exit 1
+	fi
+
+	if [ ! -d ${restore_source} ]
+	then
+		echo "${DATE} A backup does not appear to exist for the date '${restore_source}'. Aborting"
+		exit 1
+	fi
+
+	if [ ! -b ${restore_destination} ]
+	then
+		echo "${DATE} Desatination '${restore_device}' does not appear to be a block device! Aborting"
+		exit 1
+	fi
+
+	#######################
+	# Perform mount check on restore_device
+	#######################
+
+	##########################
+	# Check that restore_destination is not currently mounted
+	##########################
+
+	echo "-----------------------| Starting restore of ${HOST} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------"
+	echo "Backup Source: ${restore_source}"
+	echo "Restore Destination Device: ${restore_device}"
+	echo "Current partition table on destination device:"
+	fdisk -l ${restore_device}
+	echo "All data at the restore destination will be deleted!"
+	echo "Press enter to continue (or ctrl+c to cancel)... DO NOT CONTINUE YES!! *UNFINISHED*"
+	read
+	exit 1
+
+	echo -n `clock`"Creating new partition table on ${restore_device}... "
+	parted -s ${restore_device} mklabel msdos
+	check $? quit
+	echo -n `clock`"Creating new root partition on ${restore_device}... "
+	(echo n; echo p; echo 1; echo ; echo ; echo w) | fdisk ${restore_device}
+	check $? quit
+
+	if [ ${DEBUG} == 0 ]
+	then
+		echo "New partition table:"
+		fdisk -l ${restore_device}
+		echo "Press enter to continue..."
+		read
+	fi
+
+	echo -n `clock`"Creating filesystem... "
+	mkfs.ext4 -m 0 -L ${HOST}-root ${restore_device}1
+	check $? quit
+
+	echo -n `clock`"Mounting restore device... "
+	mkdir -p ${restore_destination}
+	umount ${restore_destination} > /dev/null 2>&1
+	mount ${restore_device}1 ${restore_destination}
+	check $? quit
+
+	echo -n `clock`"Restoring files... "
+	rsync -aH --stats ${restore_source} ${restore_destination}
+	rsync-check $?
+
+	echo `clock`"Making device bootable..."
+	arch-chroot ${restore_destination} syslinux-install_update -iam
+
+	echo -n `clock`"Syncing filesystems... "
+	sync; check $?
+
+	echo -n `clock`"Unmounting ${restore_device}... "
+	unmount ${restore_destination} > /dev/null 2>&1
+	check $?
+
+	echo `clock`"Restore completed!"
+fi
