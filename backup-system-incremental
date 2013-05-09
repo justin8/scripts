@@ -52,7 +52,13 @@ if flock -xn 200; then
 	backup_current="${backup_host_dir}/${DATE}"
 	backup_source="/tmp/${HOST}"
 	exclude=${backup_host_dir}/_exclude
-	cleanup=${backup_host_dir}/.cleanup
+	cleanup=${backup_host_dir}/_cleanup
+
+	if [ ! -f ${exclude} ]
+	then
+		echo "The '_exclude' file is required in the backup directory (${backup_host_dir})"
+		exit 1
+	fi
 
 	echo -e "-----------------------| Starting backup of ${backup_host} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------" > ${LOG}
 
