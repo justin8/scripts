@@ -18,7 +18,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Functions
-. `dirname "$0"`/lib/check
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "${DIR}" ]]; then DIR="${PWD}"; fi
+. ${DIR}/lib/check
+
 clock () { echo -n "[`date +%H:%M:%S`] "; }
 function rsync-check {
 	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
@@ -83,12 +86,12 @@ if flock -xn 200; then
 	then
 		echo `clock`"Using ${backup_previous} for hardlinks"
 		rsync -aH --stats --delete --delete-excluded --exclude-from=${exclude} \
-			--link-dest=${backup_previous} ${backup_source} ${backup_current}
+			--link-dest=${backup_previous} ${backup_source}/ ${backup_current}
 		rsync-check $?
 	else
 		echo `clock`"No previous backup detected in ${backup_host_dir}. Creating new full backup set"
 		rsync -aH --stats --delete --delete-excluded --exclude-from=$exclude \
-			${backup_source} ${backup_current}
+			${backup_source}/ ${backup_current}
 		rsync-check $?
 	fi
 
@@ -96,6 +99,7 @@ if flock -xn 200; then
 	sync; check $?
 	echo -n `clock`"Removing bind mount... "
 	umount ${backup_source}; check $?
+	rmdir ${backup_source}
 
 	echo `clock`"Clean Up: Starting..."
 	for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime 30`
