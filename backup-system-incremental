@@ -21,8 +21,8 @@ fi
 . lib/check
 clock () { echo -n "[`date +%H:%M:%S`] "; }
 function rsync-check {
-	[[ $1 == 0 ]] && echo `clock`"Rsync failed with error code $1, backup for ${DATE} may be corrupt."
-	[[ $1 != 0 ]] && echo `clock`"Rsync finished Successfully"
+	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
+	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for ${DATE} may be corrupt."
 }
 function remove-backup {
 	echo `clock`"Clean Up: ${1} backup has been detected as over 30 days old"
@@ -51,16 +51,16 @@ if flock -xn 200; then
 	backup_host_dir="${BACKUPDIR}/${HOST}"
 	backup_current="${backup_host_dir}/${DATE}"
 	backup_source="/tmp/${HOST}"
-	exclude=${backup_current}/_exclude
+	exclude=${backup_host_dir}/_exclude
 	cleanup=${backup_host_dir}/.cleanup
 
 	echo -e "-----------------------| Starting backup of ${backup_host} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------" > ${LOG}
 
 	echo `clock`"Starting backup of ${backup_host} to ${backup_current}"
 	
-	echo -n `clock`"Mounting root for backup... "
+	echo -n `clock`"Mounting root to ${backup_source} for backup... "
 	mkdir -p ${backup_source}
-	umount ${backup_source}
+	umount ${backup_source} > /dev/null 2>&1
 	mount -o bind / ${backup_source}
 	check $?
 
@@ -80,10 +80,10 @@ if flock -xn 200; then
 
 	echo `clock`"Syncing filesystems... "
 	sync; check $?
-	echo -e `clock`"Removing bind mount..."
+	echo -e `clock`"Removing bind mount... "
 	umount ${backup_source}; check $?
 
-	# Clean up directories
+	echo `clock`"Clean Up: Starting..."
 	find ${backup_host_dir}/* -type d -mtime 30 -exec remove-backup {} \;
 
 else
