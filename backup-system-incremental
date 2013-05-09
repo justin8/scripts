@@ -90,7 +90,10 @@ if flock -xn 200; then
 	umount ${backup_source}; check $?
 
 	echo `clock`"Clean Up: Starting..."
-	find ${backup_host_dir}/* -type d -mtime 30 -exec remove-backup {} \;
+	for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime 30`
+	do
+		remove-backup ${i}
+	done
 
 else
 	echo "${DATE} Lock file ${LOCK} present. Aborting"
