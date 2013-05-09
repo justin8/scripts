@@ -110,7 +110,7 @@ if flock -xn 200; then
 	[[ ${DEBUG} == 0 ]] && read
 
 	echo -n `clock`"Restoring files... "
-#	rsync -aH --stats ${restore_source}/ ${restore_destination}
+	rsync -aH --stats ${restore_source}/ ${restore_destination}
 	rsync-check $?
 	[[ ${DEBUG} == 0 ]] && read
 
