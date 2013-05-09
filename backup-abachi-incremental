@@ -47,6 +47,7 @@ exec > >(tee ${LOG})
 LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
+	echo "" > ${LOG}
 
 	# Instance variables
 	backup_host_dir="${BACKUPDIR}/${HOST}"
@@ -67,7 +68,7 @@ if flock -xn 200; then
 		exit 1
 	fi
 
-	echo -e "-----------------------| Starting backup of ${backup_host} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------" > ${LOG}
+	echo -e "-----------------------| Starting backup of ${HOST} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------"
 
 	echo `clock`"Starting backup of ${backup_host} to ${backup_current}"
 	
