@@ -17,11 +17,6 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
-if [ $# != 1 ] ; then
-	echo "${DATE}You must specify a single machine to make an incremental backup of."
-	exit 1
-fi
-
 # Functions
 . lib/check
 clock () { echo -n "[`date +%H:%M:%S`] "; }
@@ -55,6 +50,7 @@ if flock -xn 200; then
 	# Instance variables
 	backup_host_dir="${BACKUPDIR}/${HOST}"
 	backup_current="${backup_host_dir}/${DATE}"
+	backup_source="/tmp/${HOST}"
 	exclude=${backup_current}/_exclude
 	cleanup=${backup_host_dir}/.cleanup
 
@@ -63,9 +59,9 @@ if flock -xn 200; then
 	echo `clock`"Starting backup of ${backup_host} to ${backup_current}"
 	
 	echo -n `clock`"Mounting root for backup... "
-	mkdir -p /tmp/${HOST}
-	umount /tmp/${HOST}
-	mount -o bind / /tmp/${HOST}
+	mkdir -p ${backup_source}
+	umount ${backup_source}
+	mount -o bind / ${backup_source}
 	check $?
 
 	backup_previous=`ls -d1 ${backup_host_dir}/* | sort -n | tail -1`
@@ -73,19 +69,19 @@ if flock -xn 200; then
 	then
 		echo `clock`"Using ${backup_previous} for hardlinks"
 		rsync -a --stats --delete --delete-excluded --exclude-from=${exclude} \
-			--link-dest=${backup_previous} /tmp/${HOST} ${backup_current}
+			--link-dest=${backup_previous} ${backup_source} ${backup_current}
 		rync-check $?
 	else
 		echo `clock`"No previous backup detected in ${backup_host_dir}. Creating new full backup set"
 		rsync -a --stats --delete --delete-excluded --exclude-from=$exclude \
-			/tmp/${HOST} ${backup_current}
+			${backup_source} ${backup_current}
 		rsync-check $?
 	fi
 
 	echo `clock`"Syncing filesystems... "
 	sync; check $?
 	echo -e `clock`"Removing bind mount..."
-	umount /tmp/${HOST}; check $?
+	umount ${backup_source}; check $?
 
 	# Clean up directories
 	find ${backup_host_dir}/* -type d -mtime 30 -exec remove-backup {} \;
