@@ -82,12 +82,12 @@ if flock -xn 200; then
 	if [ ${backup_previous} ]
 	then
 		echo `clock`"Using ${backup_previous} for hardlinks"
-		rsync -a --stats --delete --delete-excluded --exclude-from=${exclude} \
+		rsync -aH --stats --delete --delete-excluded --exclude-from=${exclude} \
 			--link-dest=${backup_previous} ${backup_source} ${backup_current}
 		rsync-check $?
 	else
 		echo `clock`"No previous backup detected in ${backup_host_dir}. Creating new full backup set"
-		rsync -a --stats --delete --delete-excluded --exclude-from=$exclude \
+		rsync -aH --stats --delete --delete-excluded --exclude-from=$exclude \
 			${backup_source} ${backup_current}
 		rsync-check $?
 	fi
