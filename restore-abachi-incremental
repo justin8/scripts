@@ -25,8 +25,8 @@ fi
 
 
 # Functions
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "${DIR}" ]]; then DIR="${PWD}"; fi
+DIR=`readlink -f "${0}"`
+DIR=`dirname ${DIR}`
 . ${DIR}/lib/check
 
 clock () { echo -n "[`date +%H:%M:%S`] "; }
