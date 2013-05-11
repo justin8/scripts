@@ -18,8 +18,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Functions
-DIR=`readlink -f "${0}"`
-DIR=`dirname ${DIR}`
+DIR=`dirname $(readlink -f "${0}")`
 . ${DIR}/lib/check
 
 

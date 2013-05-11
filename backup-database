@@ -4,8 +4,7 @@ DATE=`date +%Y-%m-%d`
 LOG=/var/log/backup-database.log
 DAYSTOKEEPBACKUPS=14
 
-DIR=`readlink -f "${0}"`
-DIR=`dirname ${DIR}`
+DIR=`dirname $(readlink -f "${0}")`
 . ${DIR}/lib/check
 
 exec > >(tee ${LOG})
