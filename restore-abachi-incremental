@@ -63,13 +63,20 @@ if flock -xn 200; then
 		exit 1
 	fi
 
-	#######################
-	# Perform mount check on restore_device
-	#######################
+	if [ `mount|grep -o ${restore_device}` ]
+	then
+		echo "${DATE} The destination device '${restore_device}' appears to be mounted! Aborting"
+		exit 1
+	fi
 
 	##########################
 	# Check that restore_destination is not currently mounted
 	##########################
+	if [ `mount|grep -o ${restore_destination}` ]
+	then
+		echo "${DATE} The temporary location '${restore_destination}' appears to be mounted! Aborting"
+		exit 1
+	fi
 
 	echo "-----------------------| Starting restore of ${HOST} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------"
 	echo "Backup Source: ${restore_source}"
