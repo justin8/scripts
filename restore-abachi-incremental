@@ -118,7 +118,11 @@ if flock -xn 200; then
 	[[ ${DEBUG} == 0 ]] && read
 
 	echo `clock`"Making device bootable..."
-#	arch-chroot ${restore_destination} syslinux-install_update -iam
+	arch-chroot ${restore_destination} syslinux-install_update -iam
+	[[ ${DEBUG} == 0 ]] && read
+
+	echo -n `clock`"Syncing filesystems... "
+	sync; check $?
 	[[ ${DEBUG} == 0 ]] && read
 
 	echo -n `clock`"Unmounting ${restore_device}... "
