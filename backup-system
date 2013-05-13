@@ -31,7 +31,7 @@ do
 			check $?;;
 		bloodwood|birch|mahogany)
 			echo -n "Backing up ${var}..."
-			cp /raid/virtual-machines/${var}.qed ${BACKUPDIR}/${var}.qed.${DATE} 2>>${LOG}
+			cp /raid/virtual-machines/${var}.qcow2 ${BACKUPDIR}/${var}.qcow2.${DATE} 2>>${LOG}
 			check $?;;
 		*) echo "${var} is unknown; skipping."
 	esac
