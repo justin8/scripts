@@ -1,6 +1,7 @@
 #!/bin/bash
-SERVER=abachi.dray.be
-BACKUPDIR=/raid/shares/backups/Full
+SHARE="//abachi.dray.be/Backups"
+MOUNT="/tmp/backups"
+BACKUPDIR="$MOUNT/Full"
 
 function usage {
 	echo "USAGE: $(basename $0) <device> <machinename>"
@@ -44,7 +45,7 @@ MACHINE=$2
 
 echo -n \
 "--------------------------------------------| WARNING |--------------------------------------------
-This should only be run from a Windows machine, to back up to $SERVER over a LAN connection
+This should only be run from a Windows machine, to back up over a LAN connection
 It will overwrite any image that already exists for the specified machine
 This will *NOT* work with GPT disks currently
 --------------------------------------------| WARNING |--------------------------------------------
@@ -55,19 +56,22 @@ Current partition table of $DEVICE: `fdisk -l $DEVICE`
 Press enter to continue..."
 read
 
+DEST=$BACKUPDIR/$MACHINE
+LOG=$DEST/log
+
 echo "Preparing backup source machine..."
 if $(pacman -Q cifs-utils > /dev/null 2>&1)
 then
        pacman -Sy > dev/null 2>&1
        pacman -S --noconfirm cifs-utils > /dev/null 2>&1
 fi
-mkdir -p /raid/shares/backups
+mkdir -p $MOUNT
 cred=/tmp/cred
 cat << EOF > $cred
 username=backup
 password=kltzmhnsemuk
 EOF
-mount -o credentials=$cred //abachi.dray.be/Backups /raid/shares/backups > /tmp/mntlog 2>&1
+mount -o credentials=$cred $SHARE $MOUNT > /tmp/mntlog 2>&1
 rc=$?
 check $rc
 rm -rf $cred
@@ -75,14 +79,11 @@ if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
 
 read
 
-DEST=$BACKUPDIR/$MACHINE
-LOG=$DEST/log
-
-exec > >(tee $LOG)
-
 echo -n "Preparing backup destination... "
 mkdir -p $DEST && rm -rf $DEST/*
 check $?
+
+exec > >(tee $LOG)
 
 echo -n "Backing up MBR... "
 dd if=$DEVICE of=$DEST/mbr.bin bs=512 count=1 > /tmp/ddlog 2>&1
