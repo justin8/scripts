@@ -38,7 +38,7 @@ fi
 
 if [[ $(mount|grep -o $DEVICE) ]]; then
 	echo "The specified device appears to be mounted somewhere! Aborting"
-#	exit 1
+	exit 1
 fi
 
 MACHINE=$2
