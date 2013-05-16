@@ -35,9 +35,9 @@ if ! `fdisk -l $DEVICE|grep -q "Disk label type: dos"`; then
 	exit 1
 fi
 
-if [[ $(mount|grep -o $DEVICE) ]]
+if [[ $(mount|grep -o $DEVICE) ]]; then
 	echo "The specified device appears to be mounted somewhere! Aborting"
-	exit 1
+#	exit 1
 fi
 
 MACHINE=$2
@@ -54,6 +54,19 @@ Current partition table of $DEVICE: `fdisk -l $DEVICE`
 
 Press enter to continue...
 "
+read
+
+echo "Preparing backup source..."
+pacman -Q cifs-utils > /dev/null 2>&1 || pacman -Sy; pacman -S --noconfirm cifs-utils
+mkdir -p /raid/shares/backups
+cred=/tmp/cred
+cat << EOF > $cred
+username=backup
+password=kltzmhnsemuk
+EOF
+mount -o credentials=$cred //abachi.dray.be/Backups /raid/shares/backups
+rm -rf $cred
+
 read
 
 DEST=$BACKUPDIR/$MACHINE
@@ -93,5 +106,10 @@ do
 			echo "...Partition type unknown! Skipping...";;
 	esac
 done
+
+echo "Cleaning up..."
+sync
+umount /raid/shares/backups
+
 echo "Backup complete"
 [[ $result == "error" ]] && echo "Some errors were encountered during the backup of the partitions"
