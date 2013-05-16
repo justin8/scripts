@@ -116,7 +116,7 @@ done
 
 echo "Cleaning up..."
 sync
-umount /raid/shares/backups
+umount $MOUNT
 
 echo "Backup complete"
 [[ $result == "error" ]] && echo "Some errors were encountered during the backup of the partitions"
