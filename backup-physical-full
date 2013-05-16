@@ -45,9 +45,10 @@ MACHINE=$2
 
 echo -n \
 "--------------------------------------------| WARNING |--------------------------------------------
-This should only be run from a Windows machine, to back up over a LAN connection
+This should only be run from a physical machine, to create a full back up over a LAN connection
 It will overwrite any image that already exists for the specified machine
 This will *NOT* work with GPT disks currently
+It only supports backing up a single block device
 --------------------------------------------| WARNING |--------------------------------------------
 Backup source: $DEVICE
 Machine name: $MACHINE
