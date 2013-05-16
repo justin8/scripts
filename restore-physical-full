@@ -1,0 +1,107 @@
+#!/bin/bash
+SHARE="//abachi.dray.be/Backups"
+MOUNT="/tmp/backups"
+BACKUPDIR="$MOUNT/Full"
+
+function usage {
+echo "USAGE: $(basename $0) <device> <machinename>"
+echo "Example: $(basename $0) /dev/sda Ironwood"
+exit 1
+}
+
+function check {
+[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]"
+}
+
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+if [[ $# != 2 ]]
+then
+	usage
+fi
+
+if [[ -b $1 ]]
+then
+	DEVICE=$1
+else
+	usage
+fi
+
+if ! `fdisk -l $DEVICE|grep -q "Disk label type: dos"`; then
+	echo "The specified disk does not appear to have an MBR partition table. Aborting"
+	exit 1
+fi
+
+if [[ $(mount|grep -o $DEVICE) ]]; then
+	echo "The specified device appears to be mounted somewhere! Aborting"
+	exit 1
+fi
+
+MACHINE=$2
+
+echo -n \
+"--------------------------------------------| WARNING |--------------------------------------------
+This should only be run from a physical machine, to restore a full back up over a LAN connection
+It will overwrite any data that already exists on the specified block device
+--------------------------------------------| WARNING |--------------------------------------------
+Machine name: $MACHINE
+Selected restore device: $DEVICE
+Current partition table of $DEVICE: `fdisk -l $DEVICE`
+
+Press enter to continue..."
+read
+
+SOURCE=$BACKUPDIR/$MACHINE
+LOG=$SOURCE/restore-log
+
+echo "Preparing restore destination machine..."
+if $(pacman -Q cifs-utils > /dev/null 2>&1)
+then
+	pacman -Sy > dev/null 2>&1
+	pacman -S --noconfirm cifs-utils > /dev/null 2>&1
+fi
+mkdir -p $MOUNT
+cred=/tmp/cred
+cat << EOF > $cred
+username=backup
+password=kltzmhnsemuk
+EOF
+mount -o credentials=$cred $SHARE $MOUNT > /tmp/mntlog 2>&1
+rc=$?
+check $rc
+rm -rf $cred
+if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
+
+echo $(date) > $LOG
+exec > >(tee $LOG)
+
+echo -n "Restoring MBR... "
+dd if=$SOURCE/mbr.bin of=$DEVICE bs=512 count=1 > /tmp/ddlog 2>&1
+rc=$?
+check $rc
+if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
+
+echo -n "Restoring partition table... "
+sfdisk $DEVICE < $SOURCE/partitiontable
+check $?
+
+for i in `ls -1 $SOURCE/*.img`
+do
+	result="ok"
+	partition=$(echo $i|grep -o "^[0-9]*")
+	echo "Restoring partition number $partition:"
+	partclone.restore -s "$i" -o "${DEVICE}${partition}"
+	[[ $? != 0 ]] && result="error"
+done
+
+echo "Cleaning up..."
+sync
+umount $MOUNT
+
+echo "Restore complete"
+[[ $result == "error" ]] && echo "Some errors were encountered during the restore of the partitions. The restore is likely corrupt."
+
