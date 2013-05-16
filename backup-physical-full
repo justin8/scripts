@@ -78,8 +78,6 @@ check $rc
 rm -rf $cred
 if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
 
-read
-
 echo -n "Preparing backup destination... "
 mkdir -p $DEST && rm -rf $DEST/*
 check $?
