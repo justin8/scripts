@@ -58,7 +58,7 @@ Press enter to continue..."
 read
 
 DEST=$BACKUPDIR/$MACHINE
-LOG=$DEST/log
+LOG=$DEST/backup-log
 
 echo "Preparing backup source machine..."
 if $(pacman -Q cifs-utils > /dev/null 2>&1)
@@ -82,6 +82,7 @@ echo -n "Preparing backup destination... "
 mkdir -p $DEST && rm -rf $DEST/*
 check $?
 
+echo $(date) > $LOG
 exec > >(tee $LOG)
 
 echo -n "Backing up MBR... "
@@ -90,7 +91,7 @@ rc=$?
 check $rc
 if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
 
-echo -n "Backuping up partition table..."
+echo -n "Backuping up partition table... "
 sfdisk -d $DEVICE > $DEST/partitiontable
 check $?
 
@@ -102,11 +103,11 @@ do
 	case "$type" in
 		ntfs)
 			echo "...Partition appears to be NTFS. Backing up..."
-			partclone.ntfs -c -s "$i" -o "$DEST/$(basename "$i")"
+			partclone.ntfs -c -s "$i" -o "$DEST/$(basename "$i"|grep -oE "[0-9]*").img"
 			[[ $? != 0 ]] && result="error";;
 		ext4)
 			echo "...Partition appears to be ext4. Backing up..."
-			partclone.ext4 -c -s "$i" -o "$DEST/$(basename "$i")"
+			partclone.ext4 -c -s "$i" -o "$DEST/$(basename "$i"|grep -oE "[0-9]*").img"
 			[[ $? != 0 ]] && result="error";;
 		*)
 			echo "...Partition type unknown! Skipping...";;
