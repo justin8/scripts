@@ -42,7 +42,7 @@ fi
 
 MACHINE=$2
 
-echo \
+echo -n \
 "--------------------------------------------| WARNING |--------------------------------------------
 This should only be run from a Windows machine, to back up to $SERVER over a LAN connection
 It will overwrite any image that already exists for the specified machine
@@ -52,20 +52,26 @@ Backup source: $DEVICE
 Machine name: $MACHINE
 Current partition table of $DEVICE: `fdisk -l $DEVICE`
 
-Press enter to continue...
-"
+Press enter to continue..."
 read
 
-echo "Preparing backup source..."
-pacman -Q cifs-utils > /dev/null 2>&1 || pacman -Sy; pacman -S --noconfirm cifs-utils
+echo "Preparing backup source machine..."
+if $(pacman -Q cifs-utils > /dev/null 2>&1)
+then
+       pacman -Sy > dev/null 2>&1
+       pacman -S --noconfirm cifs-utils > /dev/null 2>&1
+fi
 mkdir -p /raid/shares/backups
 cred=/tmp/cred
 cat << EOF > $cred
 username=backup
 password=kltzmhnsemuk
 EOF
-mount -o credentials=$cred //abachi.dray.be/Backups /raid/shares/backups
+mount -o credentials=$cred //abachi.dray.be/Backups /raid/shares/backups > /tmp/mntlog 2>&1
+rc=$?
+check $rc
 rm -rf $cred
+if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
 
 read
 
