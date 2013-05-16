@@ -1,0 +1,97 @@
+#!/bin/bash
+SERVER=abachi.dray.be
+BACKUPDIR=/raid/shares/backups/Windows
+
+function usage {
+	echo "USAGE: $(basename $0) <device> <machinename>"
+	echo "Example: $(basename $0) /dev/sda Ironwood"
+	exit 1
+}
+
+function check {
+	[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+	[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]"
+}
+
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+if [[ $# != 2 ]]
+then
+	usage
+fi
+
+if [[ -b $1 ]]
+then
+	DEVICE=$1
+else
+	usage
+fi
+
+if ! `fdisk -l $DEVICE|grep -q "Disk label type: dos"`; then
+	echo "The specified disk does not appear to have an MBR partition table. Aborting"
+	exit 1
+fi
+
+if [[ $(mount|grep -o $DEVICE) ]]
+	echo "The specified device appears to be mounted somewhere! Aborting"
+	exit 1
+fi
+
+MACHINE=$2
+
+echo \
+"--------------------------------------------| WARNING |--------------------------------------------
+This should only be run from a Windows machine, to back up to $SERVER over a LAN connection
+It will overwrite any image that already exists for the specified machine
+This will *NOT* work with GPT disks currently
+--------------------------------------------| WARNING |--------------------------------------------
+Backup source: $DEVICE
+Machine name: $MACHINE
+Current partition table of $DEVICE: `fdisk -l $DEVICE`
+
+Press enter to continue...
+"
+read
+
+DEST=$BACKUPDIR/$MACHINE
+LOG=$DEST/log
+
+exec > >(tee $LOG)
+
+echo -n "Preparing backup destination... "
+mkdir -p $DEST && rm -rf $DEST/*
+check $?
+
+echo -n "Backing up MBR... "
+dd if=$DEVICE of=$DEST/mbr.bin bs=512 count=1 > /tmp/ddlog 2>&1
+rc=$?
+check $rc
+if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
+
+echo -n "Backuping up partition table..."
+sfdisk -d $DEVICE > $DEST/partitiontable
+check $?
+
+for i in `ls -1 $DEVICE[1-9]*`
+do
+	result="ok"
+	echo "Backing up $i:"
+	type=`blkid $i|sed 's/.* TYPE="\([a-zA-Z0-9]*\)" .*/\1/'`
+	case "$type" in
+		ntfs)
+			echo "...Partition appears to be NTFS. Backing up..."
+			partclone.ntfs -c -s "$i" -o "$DEST/$(basename "$i")"
+			[[ $? != 0 ]] && result="error";;
+		ext4)
+			echo "...Partition appears to be ext4. Backing up..."
+			partclone.ext4 -c -s "$i" -o "$DEST/$(basename "$i")"
+			[[ $? != 0 ]] && result="error";;
+		*)
+			echo "...Partition type unknown! Skipping...";;
+	esac
+done
+echo "Backup complete"
+[[ $result == "error" ]] && echo "Some errors were encountered during the backup of the partitions"
