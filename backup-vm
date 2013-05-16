@@ -1,0 +1,39 @@
+#!/bin/bash
+
+BACKUPDIR="/raid/shares/backups/Linux"
+SOURCEDIR="/raid/virtual-machines"
+EXT="qcow2"
+DATE=`date +%Y-%m-%d`
+LOG=/var/log/$(basename $0).log
+
+DIR=`dirname $(readlink -f "${0}")`
+. ${DIR}/lib/check
+
+exec > >(tee ${LOG})
+
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+if [ $# -lt 1 ] ; then
+	echo "USAGE: $(basename $0) VM [VM]"
+	exit 1
+fi
+
+
+echo "" > ${LOG}
+
+for vm in $@
+do
+	source=$SOURCEDIR/${vm}.$EXT
+	if [[ -f $source ]]
+	then
+		cp $source $BACKUPDIR/${vm}.${EXT}.$DATE 2>>$LOG
+		check $?
+	else
+		echo "$vm is unknown; skipping."
+	fi
+done
+
+exit 0
