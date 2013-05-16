@@ -119,4 +119,4 @@ sync
 umount $MOUNT
 
 echo "Backup complete"
-[[ $result == "error" ]] && echo "Some errors were encountered during the backup of the partitions"
+[[ $result == "error" ]] && echo "Some errors were encountered during the backup of the partitions. The backup is likely corrupt."
