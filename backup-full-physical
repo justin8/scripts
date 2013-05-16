@@ -1,6 +1,6 @@
 #!/bin/bash
 SERVER=abachi.dray.be
-BACKUPDIR=/raid/shares/backups/Windows
+BACKUPDIR=/raid/shares/backups/Full
 
 function usage {
 	echo "USAGE: $(basename $0) <device> <machinename>"
