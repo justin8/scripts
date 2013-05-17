@@ -61,12 +61,14 @@ DEST=$BACKUPDIR/$MACHINE
 LOG=$DEST/backup-log
 
 echo "Preparing backup source machine..."
-if $(pacman -Q cifs-utils > /dev/null 2>&1)
+pacman -Q cifs-utils > /dev/null 2>&1
+if [[ $? != 0 ]]
 then
-       pacman -Sy > dev/null 2>&1
-       pacman -S --noconfirm cifs-utils > /dev/null 2>&1
+	pacman -Sy > /dev/null 2>&1
+	pacman -S --noconfirm cifs-utils > /dev/null 2>&1
 fi
 mkdir -p $MOUNT
+umount $MOUNT > /dev/null 2>&1
 cred=/tmp/cred
 cat << EOF > $cred
 username=backup
