@@ -31,11 +31,6 @@ else
 	usage
 fi
 
-if ! `fdisk -l $DEVICE|grep -q "Disk label type: dos"`; then
-	echo "The specified disk does not appear to have an MBR partition table. Aborting"
-	exit 1
-fi
-
 if [[ $(mount|grep -o $DEVICE) ]]; then
 	echo "The specified device appears to be mounted somewhere! Aborting"
 	exit 1
@@ -59,12 +54,14 @@ SOURCE=$BACKUPDIR/$MACHINE
 LOG=$SOURCE/restore-log
 
 echo "Preparing restore destination machine..."
-if $(pacman -Q cifs-utils > /dev/null 2>&1)
+pacman -Q cifs-utils > /dev/null 2>&1
+if [[ $? != 0 ]]
 then
-	pacman -Sy > dev/null 2>&1
+	pacman -Sy > /dev/null 2>&1
 	pacman -S --noconfirm cifs-utils > /dev/null 2>&1
 fi
 mkdir -p $MOUNT
+umount $MOUNT > /dev/null 2>&1
 cred=/tmp/cred
 cat << EOF > $cred
 username=backup
@@ -79,20 +76,29 @@ if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
 echo $(date) > $LOG
 exec > >(tee $LOG)
 
+echo -n "Removing any old partition tables... "
+parted -s $DEVICE mklabel msdos
+rc=$?
+check $rc
+if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
+
 echo -n "Restoring MBR... "
 dd if=$SOURCE/mbr.bin of=$DEVICE bs=512 count=1 > /tmp/ddlog 2>&1
 rc=$?
 check $rc
 if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
+partprobe > /dev/null 2>&1
 
-echo -n "Restoring partition table... "
-sfdisk $DEVICE < $SOURCE/partitiontable
-check $?
+#echo -n "Restoring extended partition table... "
+#sfdisk $DEVICE < $SOURCE/partitiontable
+#rc=$?
+#check $rc
+#if [ $rc != 0 ]; then cat /tmp/ddlog;exit 1;fi
 
 for i in `ls -1 $SOURCE/*.img`
 do
 	result="ok"
-	partition=$(echo $i|grep -o "^[0-9]*")
+	partition=$(basename $i|grep -o "^[0-9]*")
 	echo "Restoring partition number $partition:"
 	partclone.restore -s "$i" -o "${DEVICE}${partition}"
 	[[ $? != 0 ]] && result="error"
