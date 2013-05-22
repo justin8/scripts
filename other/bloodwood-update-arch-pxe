@@ -5,16 +5,36 @@ then
 	echo "This is only supposed to be run on bloodwood! Aborting"
 	exit 1
 fi
+function check {
+[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\n"
+}
 
-umount /mnt/OSes
+
+echo -n "Mounting //abachi/OSes... "
+umount /mnt/OSes > /dev/null
 mount -o credentials=~/.smbcreds //abachi/OSes /mnt/OSes
+rc=$?
+check $rc
+[[ $rc != 0 ]] && exit 1
 
-umount /mnt/ISO
+echo -n "Mounting arch ISO... "
+umount /mnt/ISO > /dev/null
 mount /mnt/OSes/x86/Arch/custom.iso /mnt/ISO
+rc=$?
+check $rc
+[[ $rc != 0 ]] && exit 1
 
+echo "Copying files..."
 rsync -a --delete /mnt/ISO/ /srv/nfs/arch/
+
+echo "Copying 32-bit image..."
 rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/arch/32
+
+echo "Copying 64-bit image..."
 rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/arch/64
+
+echo "Cleaning up..."
 sync
 umount /mnt/ISO
 umount /mnt/OSes
