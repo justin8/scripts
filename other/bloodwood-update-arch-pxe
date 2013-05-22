@@ -20,7 +20,7 @@ check $rc
 
 echo -n "Mounting arch ISO... "
 umount /mnt/ISO > /dev/null 2>&1
-mount /mnt/OSes/x86/Arch/custom.iso /mnt/ISO > /tmp/error 2>&1
+mount $(ls -1t /mnt/OSes/x86/Arch|head -1) /mnt/ISO > /tmp/error 2>&1
 rc=$?
 check $rc
 [[ $rc != 0 ]] && echo "Error: $(cat /tmp/error)" && exit 1
