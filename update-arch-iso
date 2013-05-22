@@ -1,0 +1,19 @@
+#!/bin/bash
+
+BUILDDIR="/raid/server-files/build/iso"
+OUTPUT="/raid/shares/OSes/x86/Arch"
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+cd $BUILDDIR
+rm -rf $BUILDDIR/work
+./build.sh -o $OUTPUT
+rm -rf $BUILDDIR/work
+chown -R downloads. $OUTPUT
+
+echo "Updating PXE boot image on bloodwood..."
+ssh bloodwood "/root/update-arch-pxe"
