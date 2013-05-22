@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [[ $(hostname) != "bloodwood" ]]
+then
+	echo "This is only supposed to be run on bloodwood! Aborting"
+	exit 1
+fi
+
+umount /mnt/OSes
+mount -o credentials=~/.smbcreds //abachi/OSes /mnt/OSes
+
+umount /mnt/ISO
+mount /mnt/OSes/x86/Arch/custom.iso /mnt/ISO
+
+rsync -a --delete /mnt/ISO/ /srv/nfs/arch/
+rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/arch/32
+rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/arch/64
+sync
+umount /mnt/ISO
+umount /mnt/OSes
