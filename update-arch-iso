@@ -2,6 +2,7 @@
 
 BUILDDIR="/raid/server-files/build/iso"
 OUTPUT="/raid/shares/OSes/x86/Arch"
+SCRIPTS="/raid/server/files/scripts/other"
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
@@ -9,8 +10,13 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+echo "Preparing build environment..."
 cd $BUILDDIR
 rm -rf $BUILDDIR/work
+mkdir -p $BUILDDIR/root-image/usr/local/bin
+rm -rf $BUILDDIR/root-image/usr/local/bin/*
+cp $SCRIPTS/*physical* $BUILDDIR/root-images/usr/local/bin
+
 ./build.sh -o $OUTPUT
 rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
