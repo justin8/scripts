@@ -118,6 +118,7 @@ done
 
 echo "Cleaning up..."
 sync
+sleep 2
 umount $MOUNT
 
 echo "Backup complete"
