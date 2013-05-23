@@ -10,9 +10,10 @@ function check {
 [[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\n"
 }
 
+umount /mnt/ISO > /dev/null 2>&1
+umount /mnt/OSes > /dev/null 2>&1
 
 echo -n "Mounting //abachi/OSes... "
-umount /mnt/OSes > /dev/null 2>&1
 mount -o credentials=~/.smbcreds //abachi/OSes /mnt/OSes > /tmp/error 2>&1
 rc=$?
 check $rc
@@ -20,7 +21,6 @@ check $rc
 
 iso=$(ls -1t /mnt/OSes/x86/Arch|head -1)
 echo -n "Mounting arch ISO ($iso)... "
-umount /mnt/ISO > /dev/null 2>&1
 mount /mnt/OSes/x86/Arch/$iso /mnt/ISO > /tmp/error 2>&1
 rc=$?
 check $rc
