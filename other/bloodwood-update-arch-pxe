@@ -1,14 +1,24 @@
 #!/bin/bash
 
+
 if [[ $(hostname) != "bloodwood" ]]
 then
 	echo "This is only supposed to be run on bloodwood! Aborting"
 	exit 1
 fi
+
 function check {
 [[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
 [[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\n"
 }
+
+if [[ $1 == "xbmc" ]]; then
+	XBMC="true"
+	PATH="arch-xbmc"
+else
+	XBMC="false"
+	PATH="arch"
+fi
 
 umount /mnt/ISO > /dev/null 2>&1
 umount /mnt/OSes > /dev/null 2>&1
@@ -19,7 +29,12 @@ rc=$?
 check $rc
 [[ $rc != 0 ]] && echo "Error: $(cat /tmp/error)" && exit 1
 
-iso=$(ls -1t /mnt/OSes/x86/Arch|grep -v xbmc|head -1)
+if [[ $XBMC == "true" ]]
+	iso=$(ls -1t /mnt/OSes/x86/Arch|grep xbmc|head -1)
+else
+	iso=$(ls -1t /mnt/OSes/x86/Arch|grep -v xbmc|head -1)
+fi
+
 echo -n "Mounting arch ISO ($iso)... "
 mount /mnt/OSes/x86/Arch/$iso /mnt/ISO > /tmp/error 2>&1
 rc=$?
@@ -27,13 +42,13 @@ check $rc
 [[ $rc != 0 ]] && echo "Error: $(cat /tmp/error)" && exit 1
 
 echo "Copying files..."
-rsync -a --delete /mnt/ISO/ /srv/nfs/arch/
+rsync -a --delete /mnt/ISO/ /srv/nfs/$PATH/
 
 echo "Copying 32-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/arch/32
+rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$PATH/32
 
 echo "Copying 64-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/arch/64
+rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/$PATH/64
 
 echo "Cleaning up..."
 sync
