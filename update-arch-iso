@@ -32,8 +32,8 @@ if [[ $XBMCBUILD == "false" ]]; then
 	./build.sh -N arch -vo $OUTPUT > $LOG 2>&1
 	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
 else
-	mkdir -p $BUILDDIR/root-image/root/.xbmc/userdata
-	cp /raid/server-files/xbmc/userdata/advancedsettings.xml $BUILDDIR/root-image/root/.xbmc/userdata/
+	mkdir -p $BUILDDIR/root-image/var/lib/xbmc/.xbmc/userdata
+	cp /raid/server-files/xbmc/userdata/advancedsettings.xml $BUILDDIR/root-image/var/lib/xbmc/.xbmc/userdata/
 	echo "Building ISO (this may take several minutes)..."
 	./build.sh -N archxbmc -vo $OUTPUT > $LOG 2>&1
 	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
