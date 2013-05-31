@@ -14,10 +14,10 @@ function check {
 
 if [[ $1 == "xbmc" ]]; then
 	XBMC="true"
-	PATH="arch-xbmc"
+	REL="arch-xbmc"
 else
 	XBMC="false"
-	PATH="arch"
+	REL="arch"
 fi
 
 umount /mnt/ISO > /dev/null 2>&1
@@ -42,13 +42,13 @@ check $rc
 [[ $rc != 0 ]] && echo "Error: $(/bin/cat /tmp/error)" && exit 1
 
 echo "Copying files..."
-rsync -a --delete /mnt/ISO/ /srv/nfs/$PATH/
+rsync -a --delete /mnt/ISO/ /srv/nfs/$REL/
 
 echo "Copying 32-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$PATH/32
+rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$REL/32
 
 echo "Copying 64-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/$PATH/64
+rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/$REL/64
 
 echo "Cleaning up..."
 sync
