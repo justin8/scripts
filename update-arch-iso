@@ -4,6 +4,7 @@ BUILDDIR="/raid/server-files/build/iso"
 XBMCBUILDDIR="/raid/server-files/build/xbmc-iso"
 OUTPUT="/raid/shares/OSes/x86/Arch"
 SCRIPTS="/raid/server-files/scripts/other"
+LOG="/var/log/$(basename $0).log"
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
@@ -27,9 +28,15 @@ if [[ $XBMCBUILD == "false" ]]; then
 	mkdir -p $BUILDDIR/root-image/usr/local/bin
 	rm -rf $BUILDDIR/root-image/usr/local/bin/*
 	cp $SCRIPTS/*physical* $BUILDDIR/root-image/usr/local/bin
+	echo "Building ISO (this may take several minutes)..."
+	./build.sh -vo $OUTPUT > $LOG 2>&1
+	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
 else
 	mkdir -p $BUILDDIR/root-image/root/.xbmc/userdata
 	cp /raid/server-files/xbmc/userdata/advancedsettings.xml $BUILDDIR/root-image/root/.xbmc/userdata/
+	echo "Building ISO (this may take several minutes)..."
+	./build.sh -N archxbmc -vo $OUTPUT > $LOG 2>&1
+	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
 fi
 
 ./build.sh -o $OUTPUT
