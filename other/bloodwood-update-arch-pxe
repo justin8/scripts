@@ -19,7 +19,7 @@ rc=$?
 check $rc
 [[ $rc != 0 ]] && echo "Error: $(cat /tmp/error)" && exit 1
 
-iso=$(ls -1t /mnt/OSes/x86/Arch|head -1)
+iso=$(ls -1t /mnt/OSes/x86/Arch|grep -v xbmc|head -1)
 echo -n "Mounting arch ISO ($iso)... "
 mount /mnt/OSes/x86/Arch/$iso /mnt/ISO > /tmp/error 2>&1
 rc=$?
