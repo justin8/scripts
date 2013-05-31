@@ -1,6 +1,7 @@
 #!/bin/bash
 
 BUILDDIR="/raid/server-files/build/iso"
+XBMCBUILDDIR="/raid/server-files/build/xbmc-iso"
 OUTPUT="/raid/shares/OSes/x86/Arch"
 SCRIPTS="/raid/server-files/scripts/other"
 
@@ -10,16 +11,26 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+if [[ $1 == "xbmc" ]]; then
+	echo "Building XBMC variant ISO..."
+	BUILDDIR=${XBMCBUILDDIR}
+	XBMCBUILD="true"
+else
+	XBMCBUILD="false"
+fi
+
 echo "Preparing build environment..."
 cd $BUILDDIR
 rm -rf $BUILDDIR/work
 mkdir -p $BUILDDIR/root-image/usr/local/bin
 rm -rf $BUILDDIR/root-image/usr/local/bin/*
-cp $SCRIPTS/*physical* $BUILDDIR/root-image/usr/local/bin
+[[ $XBMCBUILD == "false" ]] && cp $SCRIPTS/*physical* $BUILDDIR/root-image/usr/local/bin
 
 ./build.sh -o $OUTPUT
 rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
 
-echo "Updating PXE boot image on bloodwood..."
-ssh bloodwood "/root/update-arch-pxe"
+if [[ $XBMCBUILD == "false" ]]; then
+	echo "Updating PXE boot image on bloodwood..."
+	ssh bloodwood "/root/update-arch-pxe"
+fi
