@@ -5,9 +5,7 @@ SOURCEDIR="/raid/virtual-machines"
 EXT="qcow2"
 DATE=`date +%Y-%m-%d`
 LOG=/var/log/$(basename $0).log
-
 DIR=`dirname $(readlink -f "${0}")`
-. ${DIR}/lib/check
 
 exec > >(tee ${LOG})
 
@@ -21,7 +19,6 @@ if [ $# -lt 1 ] ; then
 	exit 1
 fi
 
-
 echo "" > ${LOG}
 
 for vm in $@
@@ -29,9 +26,9 @@ do
 	source=$SOURCEDIR/${vm}.$EXT
 	if [[ -f $source ]]
 	then
-		echo "Backing up ${vm}..."
-		cp $source $BACKUPDIR/${vm}.${EXT}.$DATE 2>>$LOG
-		check $?
+		echo "Backing up ${vm}... "
+		pv $source > $BACKUPDIR/${vm}.${EXT}.$DATE
+		echo ""
 	else
 		echo "$vm is unknown; skipping."
 	fi
