@@ -29,6 +29,7 @@ do
 	source=$SOURCEDIR/${vm}.$EXT
 	if [[ -f $source ]]
 	then
+		echo "Backing up ${vm}..."
 		cp $source $BACKUPDIR/${vm}.${EXT}.$DATE 2>>$LOG
 		check $?
 	else
