@@ -44,8 +44,10 @@ check $rc
 echo "Copying files..."
 rsync -a --delete /mnt/ISO/ /srv/nfs/$REL/
 
-echo "Copying 32-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$REL/32
+if [[ $XBMC == "false" ]]; then
+	echo "Copying 32-bit image..."
+	rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$REL/32
+fi
 
 echo "Copying 64-bit image..."
 rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/$REL/64
