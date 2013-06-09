@@ -46,11 +46,15 @@ rsync -a --delete /mnt/ISO/ /srv/nfs/$REL/
 
 if [[ $XBMC == "false" ]]; then
 	echo "Copying 32-bit image..."
-	rsync -a --delete /mnt/ISO/arch/boot/i686/ /srv/tftp/$REL/32
+	rm -f /srv/tftp/$REL/32/*
+	ln -P /srv/nfs/$REL/arch/boot/i686/archiso.img /srv/tftp/$REL/32
+	ln -P /srv/nfs/$REL/arch/boot/i686/vmlinuz /srv/tftp/$REL/32
 fi
 
 echo "Copying 64-bit image..."
-rsync -a --delete /mnt/ISO/arch/boot/x86_64/ /srv/tftp/$REL/64
+rm -f /srv/tftp/$REL/64/*
+ln -P /srv/nfs/$REL/arch/boot/x86_64/archiso.img /srv/tftp/$REL/64
+ln -P /srv/nfs/$REL/arch/boot/x86_64/vmlinuz /srv/tftp/$REL/64
 
 echo "Cleaning up..."
 sync
