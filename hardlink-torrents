@@ -1,0 +1,28 @@
+#!/bin/bash
+INPUT=/raid/server-files/downloads/complete/torrents
+OUTPUT=/raid/server-files/downloads/complete
+
+if [ $# -lt 1 ] ; then
+	echo "USAGE: $(basename $0) <file/folder to hardlink>"
+	exit 1
+fi
+
+#Clean up temp files before starting
+rm -rf "/tmp/$(basename $0)*"
+
+find "$INPUT/$1" -type d > "/tmp/$(basename $0).dirs"
+sed -i "s#$INPUT/##g" "/tmp/$(basename $0).dirs"
+while read line
+do
+	mkdir -p "$OUTPUT/$line"
+done < "/tmp/$(basename $0).dirs"
+
+find "$INPUT/$1" -type f > "/tmp/$(basename $0).input"
+while read line
+do
+	ofile=$(echo $line|sed "s#$INPUT/##g")
+	ln -P "$line" "$OUTPUT/$ofile"
+	chown downloads. "$OUTPUT/$ofile"
+	chmod --reference="$line" "$OUTPUT/$ofile"
+done < "/tmp/$(basename $0).input"
+
