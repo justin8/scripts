@@ -2,11 +2,7 @@
 INPUT=/raid/server-files/downloads/complete/torrents
 OUTPUT=/raid/server-files/downloads/complete
 
-if [ $# -lt 1 ] ; then
-	echo "USAGE: $(basename $0) <file/folder to hardlink>"
-	exit 1
-fi
-
+function linktorrent { 
 #Clean up temp files before starting
 rm -rf "/tmp/$(basename $0)*"
 
@@ -20,9 +16,21 @@ done < "/tmp/$(basename $0).dirs"
 find "$INPUT/$1" -type f > "/tmp/$(basename $0).input"
 while read line
 do
-	ofile=$(echo $line|sed "s#$INPUT/##g")
-	ln -P "$line" "$OUTPUT/$ofile"
-	chown downloads. "$OUTPUT/$ofile"
-	chmod --reference="$line" "$OUTPUT/$ofile"
+	curfile=$(echo $line|sed "s#$INPUT/##g")
+	ln -P "$line" "$OUTPUT/$curfile"
+	chmod --reference="$line" "$OUTPUT/$curfile"
 done < "/tmp/$(basename $0).input"
+}
 
+for torrent in $INPUT/*
+do
+	bntorrent=$(echo $torrent|sed "s#$INPUT/##")
+	if [[ ! -e "$INPUT/.link/$bntorrent" ]]; then
+		echo "Linking ${bntorrent}..."
+		linktorrent "$bntorrent"
+		touch "$INPUT/.link/$bntorrent"
+		read
+	fi
+done
+
+chown -R downloads. $OUTPUT
