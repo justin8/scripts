@@ -22,6 +22,8 @@ do
 done < "/tmp/$(basename $0).input"
 }
 
+if [ $# -lt 1 ]; then
+
 for torrent in $INPUT/*
 do
 	bntorrent=$(echo $torrent|sed "s#$INPUT/##")
@@ -32,5 +34,13 @@ do
 		read
 	fi
 done
+
+elif [ $# -eq 1 ]; then
+	linktorrent "$1"
+else
+	echo "USAGE: $(basename $0) [torrent-name]"
+	echo "Torrent name is optional. If it is omitted, all previously-unlinked torrents will be linked"
+	exit 1
+fi
 
 chown -R downloads. $OUTPUT
