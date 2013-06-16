@@ -133,7 +133,7 @@ if flock -xn 200; then
 	umount ${restore_destination} > /dev/null 2>&1
 	check $?
 
-	echo -n `clocl`"Cleaning up mount point... "
+	echo -n `clock`"Cleaning up mount point... "
 	rmdir ${restore_destination} > /dev/null 2>&1
 	check $?
 
