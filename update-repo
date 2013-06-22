@@ -1,0 +1,4 @@
+#!/bin/bash
+PACKAGES=/raid/server-files/build/packages
+
+repo-add $PACKAGES/repo.db.tar.gz $PACKAGES/*
