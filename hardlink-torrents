@@ -31,7 +31,6 @@ do
 		echo "Linking ${bntorrent}..."
 		linktorrent "$bntorrent"
 		touch "$INPUT/.link/$bntorrent"
-		read
 	fi
 done
 
