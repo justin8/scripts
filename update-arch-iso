@@ -29,12 +29,12 @@ if [[ $XBMCBUILD == "false" ]]; then
 	rm -rf $BUILDDIR/root-image/usr/local/bin/*
 	cp $SCRIPTS/*physical* $BUILDDIR/root-image/usr/local/bin
 	echo "Building ISO (this may take several minutes)..."
-	./build.sh -N archlinux -vo $OUTPUT > $LOG 2>&1
-	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
+	./build.sh -vo $OUTPUT > $LOG 2>&1
+	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
 else
 	echo "Building ISO (this may take several minutes)..."
-	./build.sh -N archxbmc -vo $OUTPUT > $LOG 2>&1
-	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details"
+	./build.sh -vo $OUTPUT > $LOG 2>&1
+	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
 fi
 
 rm -rf $BUILDDIR/work
