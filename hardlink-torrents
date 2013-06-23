@@ -26,7 +26,7 @@ if [ $# -lt 1 ]; then
 
 for torrent in $INPUT/*
 do
-	bntorrent=$(echo $torrent|sed "s#$INPUT/##")
+	bntorrent=$(echo "$torrent"|sed "s#$INPUT/##")
 	if [[ ! -e "$INPUT/.link/$bntorrent" ]]; then
 		echo "Linking ${bntorrent}..."
 		linktorrent "$bntorrent"
