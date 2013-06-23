@@ -6,33 +6,40 @@ function linktorrent {
 #Clean up temp files before starting
 rm -rf "/tmp/$(basename $0)*"
 
-find "$INPUT/$1" -type d > "/tmp/$(basename $0).dirs"
-sed -i "s#$INPUT/##g" "/tmp/$(basename $0).dirs"
+find "$INPUT/$1" -type d > "/tmp/$(basename $0).dirs" || exit 1
+sed -i "s#$INPUT/##g" "/tmp/$(basename $0).dirs" || exit 1
 while read line
 do
 	mkdir -p "$OUTPUT/$line"
 done < "/tmp/$(basename $0).dirs"
 
-find "$INPUT/$1" -type f > "/tmp/$(basename $0).input"
+find "$INPUT/$1" -type f > "/tmp/$(basename $0).input" || exit 1
 while read line
 do
-	curfile=$(echo $line|sed "s#$INPUT/##g")
+	curfile=$(echo "$line"|sed "s#$INPUT/##g")
 	ln -P "$line" "$OUTPUT/$curfile"
 	chmod --reference="$line" "$OUTPUT/$curfile"
 done < "/tmp/$(basename $0).input"
 }
 
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
 if [ $# -lt 1 ]; then
 
-for torrent in $INPUT/*
-do
-	bntorrent=$(echo "$torrent"|sed "s#$INPUT/##")
-	if [[ ! -e "$INPUT/.link/$bntorrent" ]]; then
-		echo "Linking ${bntorrent}..."
-		linktorrent "$bntorrent"
-		touch "$INPUT/.link/$bntorrent"
-	fi
-done
+	for torrent in $INPUT/*
+	do
+		bntorrent=$(echo "$torrent"|sed "s#$INPUT/##")
+		if [[ ! -e "$INPUT/.link/$bntorrent" ]]; then
+			echo "Linking ${bntorrent}..."
+			linktorrent "$bntorrent"
+			if [ $? == 0 ]; then
+				touch "$INPUT/.link/$bntorrent"
+			fi
+		fi
+	done
 
 elif [ $# -eq 1 ]; then
 	linktorrent "$1"
