@@ -46,7 +46,7 @@ function remove-backup {
 }
 
 
-exec > >(tee ${LOG})
+exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG}))
 LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then

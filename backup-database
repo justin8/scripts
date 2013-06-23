@@ -7,7 +7,7 @@ DAYSTOKEEPBACKUPS=14
 DIR=`dirname $(readlink -f "${0}")`
 . ${DIR}/lib/check
 
-exec > >(tee ${LOG})
+exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG}))
 echo "" > ${LOG}
 
 echo -n "${DATE} Backing up XBMC video database... "

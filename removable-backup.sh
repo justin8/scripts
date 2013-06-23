@@ -25,7 +25,7 @@ LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
 
-	exec > >(tee ${LOG})
+	exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG}))
 	echo "" > ${LOG}
 
 	echo "${DATE} Starting in 5 seconds..."
