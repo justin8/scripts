@@ -18,14 +18,8 @@ while read line
 do
 	curfile=$(echo "$line"|sed "s#$INPUT/##g")
 	ln -P "$line" "$OUTPUT/$curfile"
-	chmod --reference="$line" "$OUTPUT/$curfile"
 done < "/tmp/$(basename $0).input"
 }
-
-if [[ $EUID -ne 0 ]]; then
-	echo "This script must be run as root" 1>&2
-	exit 1
-fi
 
 if [ $# -lt 1 ]; then
 
@@ -41,12 +35,11 @@ if [ $# -lt 1 ]; then
 		fi
 	done
 
-elif [ $# -eq 1 ]; then
-	linktorrent "$1"
+elif [ $# -eq 3 ]; then
+	linktorrent "$2"
 else
-	echo "USAGE: $(basename $0) [torrent-name]"
-	echo "Torrent name is optional. If it is omitted, all previously-unlinked torrents will be linked"
+	echo "USAGE: $(basename $0) [torrent-hash] [torrent-name] [torrent-path]"
+	echo "Either all parameters or none must be specified. If they are omitted, all previously-unlinked torrents will be linked"
+	echo "These 3 parameters are supplied by Deluge's execute script function"
 	exit 1
 fi
-
-chown -R downloads. $OUTPUT
