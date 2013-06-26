@@ -43,3 +43,7 @@ else
 	echo "These 3 parameters are supplied by Deluge's execute script function"
 	exit 1
 fi
+
+rm -rf "/tmp/$(basename $0).dirs"
+rm -rf "/tmp/$(basename $0).input"
+sudo chown -R downloads. $OUTPUT > /dev/null 2>&1
