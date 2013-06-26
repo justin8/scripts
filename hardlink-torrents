@@ -11,6 +11,7 @@ sed -i "s#$INPUT/##g" "/tmp/$(basename $0).dirs" || exit 1
 while read line
 do
 	mkdir -p "$OUTPUT/$line"
+	sudo chown -R downloads. "$OUTPUT/$line" > /dev/null 2>&1
 done < "/tmp/$(basename $0).dirs"
 
 find "$INPUT/$1" -type f > "/tmp/$(basename $0).input" || exit 1
@@ -18,6 +19,7 @@ while read line
 do
 	curfile=$(echo "$line"|sed "s#$INPUT/##g")
 	ln -P "$line" "$OUTPUT/$curfile"
+	sudo chown -R downloads. "$OUTPUT/$curfile" > /dev/null 2>&1
 done < "/tmp/$(basename $0).input"
 }
 
@@ -46,4 +48,3 @@ fi
 
 rm -rf "/tmp/$(basename $0).dirs"
 rm -rf "/tmp/$(basename $0).input"
-sudo chown -R downloads. $OUTPUT > /dev/null 2>&1
