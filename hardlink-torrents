@@ -12,6 +12,7 @@ while read line
 do
 	mkdir -p "$OUTPUT/$line"
 	sudo chown -R downloads. "$OUTPUT/$line" > /dev/null 2>&1
+	chmod 775 "$OUTPUT/$line" > /dev/null 2>&1
 done < "/tmp/$(basename $0).dirs"
 
 find "$INPUT/$1" -type f > "/tmp/$(basename $0).input" || exit 1
@@ -20,6 +21,7 @@ do
 	curfile=$(echo "$line"|sed "s#$INPUT/##g")
 	ln -P "$line" "$OUTPUT/$curfile"
 	sudo chown -R downloads. "$OUTPUT/$curfile" > /dev/null 2>&1
+	chmod 775 "$OUTPUT/$curfile" > /dev/null 2>&1
 done < "/tmp/$(basename $0).input"
 }
 
