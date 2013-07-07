@@ -1,4 +1,5 @@
 #!/bin/bash
 PACKAGES=/srv/repo
 
-repo-add $PACKAGES/repo.db.tar.gz $PACKAGES/*.xz
+rm $PACKAGES/dray.be.db.tar.gz
+repo-add -q $PACKAGES/dray.be.db.tar.gz $PACKAGES/*.xz
