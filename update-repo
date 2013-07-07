@@ -2,8 +2,12 @@
 PACKAGES=/srv/repo
 REPO_NAME='dray.be'
 
+sudo chown -R downloads. /srv/repo
 for i in $PACKAGES/*
 do
-	rm -f $i/${REPO_NAME}*
-	repo-add -q $i/${REPO_NAME}.db.tar.gz $i/*.xz
+	cur_repo=$REPO_NAME
+	[[ $i == "${PACKAGES}/any" ]] && cur_repo='dray.be-any'
+	rm -f $i/${cur_repo}*
+	repo-add -q $i/${cur_repo}.db.tar.gz $i/*.xz
 done
+sudo chown -R downloads. /srv/repo
