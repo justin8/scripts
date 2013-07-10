@@ -1,21 +1,44 @@
 #!/bin/bash
 REPO_NAME='dray.be'
+REPO_PATH='/srv/repo'
+LOG=/var/log/$(basename $0)
 
-if [ $# -lt 2 ]; then
-	echo "USAGE: $(basename $0) path file"
-	echo "e.g. $(basename $0)}/srv/repo/x86_64 google-chrome-28.0-x86_64.pkg.tar.xz"
+set -x
+set -e
+
+exec > >(tee -a ${LOG}) 2>&1
+
+(
+flock -xw 30 200
+set +e
+
+if [ $# == 1 ];then
+	echo > /dev/null
+elif [ $# != 2 ]; then
+	echo "USAGE: $(basename $0) path [file]"
+	echo "e.g. $(basename $0) /srv/repo/x86_64 google-chrome-28.0-x86_64.pkg.tar.xz"
+	echo "e.g. $(basename $0) x86_64"
 	exit 1
 fi
 
-echo Update repo requested on: $(basename $1)
-
-if echo "$2"|grep -q "pkg.tar.xz$"
-then
-	if echo "$1"|grep -q "any"; then
-		REPO_NAME='dray.be-any'
-	fi
-	repo-add -q "$1$REPO_NAME.db.tar.gz" "$1$2"
-	chown -R downloads. /srv/repo
-else
-	echo "Updated file was not a package; ignoring..." 
+repo=$(basename $(echo $1|sed 's/"//g'))
+file=$(echo $2|sed 's/"//g')
+if echo $path|grep -q any; then
+	REPO_NAME='dray.be-any'
 fi
+
+if echo $file|grep -q 'pkg.tar.xz$'
+then
+	echo "Adding file $file to repo $repo"
+	repo-add "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/$file
+elif [[ "z$file" == "z" ]]
+then
+	echo "Performing full update on repo: $repo"
+	rm -rf $REPO_PATH/$repo/$REPO_NAME*
+	repo-add -q "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar.xz
+else
+	echo "Updated file ($file) was not a package; ignoring..." 
+	exit 0
+fi
+chown -R downloads. /srv/repo
+) 200>/run/lock/$(basename $0)
