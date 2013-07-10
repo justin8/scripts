@@ -1,13 +1,21 @@
 #!/bin/bash
-PACKAGES=/srv/repo
 REPO_NAME='dray.be'
 
-sudo chown -R downloads. /srv/repo
-for i in $PACKAGES/*
-do
-	cur_repo=$REPO_NAME
-	[[ $i == "${PACKAGES}/any" ]] && cur_repo='dray.be-any'
-	rm -f $i/${cur_repo}*
-	repo-add -q $i/${cur_repo}.db.tar.gz $i/*.xz
-done
-sudo chown -R downloads. /srv/repo
+if [ $# -lt 2 ]; then
+	echo "USAGE: $(basename $0) path file"
+	echo "e.g. $(basename $0)}/srv/repo/x86_64 google-chrome-28.0-x86_64.pkg.tar.xz"
+	exit 1
+fi
+
+echo Update repo requested on: $(basename $1)
+
+if echo "$2"|grep -q "pkg.tar.xz$"
+then
+	if echo "$1"|grep -q "any"; then
+		REPO_NAME='dray.be-any'
+	fi
+	repo-add -q "$1$REPO_NAME.db.tar.gz" "$1$2"
+	chown -R downloads. /srv/repo
+else
+	echo "Updated file was not a package; ignoring..." 
+fi
