@@ -3,9 +3,7 @@ REPO_NAME='dray.be'
 REPO_PATH='/srv/repo'
 LOG=/var/log/$(basename $0)
 
-set -x
 set -e
-
 exec > >(tee -a ${LOG}) 2>&1
 
 (
@@ -23,7 +21,7 @@ fi
 
 repo=$(basename $(echo $1|sed 's/"//g'))
 file=$(echo $2|sed 's/"//g')
-if echo $path|grep -q any; then
+if echo $repo|grep -q any; then
 	REPO_NAME='dray.be-any'
 fi
 
