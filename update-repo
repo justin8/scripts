@@ -1,6 +1,7 @@
 #!/bin/bash
 REPO_NAME='dray.be'
 REPO_PATH='/srv/repo'
+CACHE_PATH='/raid/server-files/system/pacman-cache'
 LOG=/var/log/$(basename $0).log
 
 exec > >(tee -a ${LOG}) 2>&1
@@ -28,11 +29,34 @@ if echo $file|grep -q 'pkg.tar.xz$'
 then
 	echo "Adding file $file to repo $repo"
 	repo-add "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/$file
+	if echo $repo|grep -q any; then
+		for cache in $CACHE_PATH/*
+		do
+			ln -Pf "$REPO_PATH/$repo/$file" "$cache/$file"
+		done
+	else
+		ln -Pf "$REPO_PATH/$repo/$file" "$CACHE_PATH/$repo/$file"
+	fi
 elif [[ "z$file" == "z" ]]
 then
 	echo "Performing full update on repo: $repo"
 	rm -rf $REPO_PATH/$repo/$REPO_NAME*
 	repo-add -q "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar.xz
+	if echo $repo|grep -q any; then
+		for file in $REPO_PATH/$repo/*.pkg.tar.xz
+		do
+			for cache in $CACHE_PATH/*
+			do
+				ln -Pf "$file" "$cache/$(basename $file)"
+			done
+		done
+	else
+		for file in $(ls $REPO_PATH/$repo/*.pkg.tar.xz)
+		do
+	ln -Pf "$file" "$CACHE_PATH/$repo/$(basename $file)"
+		done
+	fi
+
 else
 	echo "Updated file ($file) was not a package; ignoring..." 
 	exit 0
