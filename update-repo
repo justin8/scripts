@@ -3,12 +3,11 @@ REPO_NAME='dray.be'
 REPO_PATH='/srv/repo'
 LOG=/var/log/$(basename $0).log
 
-set -e
 exec > >(tee -a ${LOG}) 2>&1
 
 (
 flock -xw 30 200
-set +e
+[[ $? != 0 ]] && echo "Unable to obtain lock. Exiting" && exit 1
 
 if [ $# == 1 ];then
 	echo > /dev/null
