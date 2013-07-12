@@ -37,8 +37,7 @@ function remove-backup {
 		if [ -f ${cleanup} ]
 		then
 			echo `clock`"Clean Up: Clean Up is enabled; Deleting ${1}"
-			#rm -rf ${1} # Commented out until further testing
-			echo "Should be deleting ${1} here when script is finished testing"
+			rm -rf ${1} # Commented out until further testing
 		else
 			echo `clock`"Clean Up: Clean Up is disabled; ${1} will NOT be deleted."
 		fi
