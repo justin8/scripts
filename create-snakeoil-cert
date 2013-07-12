@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [[ $# != 1 ]]; then
+	echo "USAGE: $(basename "$0") site-name"
+	exit 1
+fi
+
+openssl genrsa -out ${1}.key
+#template=$(mktemp)
+#cat << EOF > $template
+#Generate a template to make it non-interactive
+#EOF
+openssl req -new -key ${1}.key -out ${1}.csr
+openssl x509 -req -days 99999 -in ${1}.csr -signkey ${1}.key -out ${1}.crt
+
+#rm $template
