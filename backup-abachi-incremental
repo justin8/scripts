@@ -95,6 +95,9 @@ if flock -xn 200; then
 		rsync-check $?
 	fi
 
+	#Touching backup folder to set completion time
+	touch ${backup_current}
+
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
 	echo -n `clock`"Removing bind mount... "
@@ -104,7 +107,7 @@ if flock -xn 200; then
 	if [ -f ${cleanup} ]
 	then
 		echo `clock`"Clean Up: Starting..."
-		for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime 30`
+		for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
 		do
 			remove-backup ${i}
 		done
