@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HOST="abachi"
-BACKUPDIR=/raid/shares/backups/Linux
+BACKUPDIR=/raid/shares/backups/Incremental
 DATE=`date +%Y-%m-%d`
 LOG="/var/log/restore-${HOST}-incremental.log"
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-BACKUPDIR="/raid/shares/backups/Linux/database"
+BACKUPDIR="/raid/shares/backups/database"
 DATE=`date +%Y-%m-%d`
 LOG=/var/log/backup-database.log
 DAYSTOKEEPBACKUPS=14

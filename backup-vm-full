@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BACKUPDIR="/raid/shares/backups/Linux"
+BACKUPDIR="/raid/shares/backups/Full/VMs"
 SOURCEDIR="/raid/virtual-machines"
 EXT="qcow2"
 DATE=`date +%Y-%m-%d`

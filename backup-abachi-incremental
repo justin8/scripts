@@ -7,7 +7,7 @@
 
 # Static variables
 HOST="abachi"
-BACKUPDIR=/raid/shares/backups/Linux
+BACKUPDIR=/raid/shares/backups/Incremental
 DATE=`date +%Y-%m-%d`
 LOG="/var/log/backup-${HOST}-incremental.log"
 
