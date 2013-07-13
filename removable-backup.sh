@@ -8,7 +8,6 @@ DEVICE="/dev/disk/by-label/backup"
 #Exclusion list (for shares only):
 cat << EOF > /tmp/backup-exclusion-list.txt
 anime
-console/Sony/PSX
 documentaries
 game-installers/steamapps
 movies
