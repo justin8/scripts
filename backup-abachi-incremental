@@ -2,7 +2,7 @@
 #
 # diskbackup - hardlink based rsync incremental backup
 #
-# Cleanup is enabled by have .cleanup file present in the backup location
+# Cleanup is enabled by having .cleanup file present in the backup location
 #
 
 # Static variables
