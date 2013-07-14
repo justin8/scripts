@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# backup-linux-incremental - hardlink based rsync incremental backup
+#
+# Cleanup is enabled by having .cleanup file present in the backup location
+#
+
+
+# Static variables
+BACKUPDIR=/raid/shares/backups/Incremental
+DATE=$(date +%Y-%m-%d)
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+# Functions
+DIR=`dirname $(readlink -f "$0")`
+. $DIR/lib/check
+
+
+clock () { echo -n "[`date +%H:%M:%S`] "; }
+function rsync-check {
+	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
+	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for $DATE may be corrupt."
+}
+
+function remove-backup {
+	echo `clock`"Clean Up: $1 backup has been detected as over 30 days old"
+	if [ "x$cleanup" = "x" ]
+	then
+		echo `clock`"Clean Up: An error has occurred during cleanup; $1 will NOT be deleted"
+	else
+		if [ -f $cleanup ]
+		then
+			echo `clock`"Clean Up: Clean Up is enabled; Deleting $1"
+			rm -rf $1
+		else
+			echo `clock`"Clean Up: Clean Up is disabled; $1 will NOT be deleted."
+		fi
+	fi
+}
+
+if [[ $# != 1 ]] && ! echo $(basename "$0") | grep -qE "^backup-[a-z][a-z][a-z]+$"
+then
+	echo "Please specify a host to back up"
+	exit 1
+fi
+
+if echo $(basename "$0") | grep -qE  "^backup-[a-z][a-z][a-z]+$"
+then
+	target=$(echo $(basename "$0") | sed 's/backup-//')
+else
+	target=$1
+fi
+
+if [[ "x$target" == "x" ]];then echo "Please specify a host to back up";exit 1;fi
+
+LOG="/var/log/backup-$target-incremental.log"
+LOCK="/run/lock/backup-linux-incremental-$target"
+
+echo "" > $LOG
+exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > $LOG))
+exec 200>$LOCK
+if flock -xn 200; then
+	trap "rm $LOCK" SIGINT SIGTERM
+	
+	x=0
+	while ! ssh -oBatchMode=yes  -oConnectTimeout=30 $target echo > /dev/null 2>&1
+	do
+		echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
+		[[ $x == 23 ]] && echo "Failng after too many attempts to contact host" && exit 1
+		((x++))
+		sleep 1h
+	done
+
+	# Instance variables
+	DATE=$(date +%Y-%m-%d)
+	backup_host_dir="$BACKUPDIR/$target"
+	backup_current="$backup_host_dir/$DATE"
+	exclude=$backup_host_dir/_exclude
+	exclude2=/tmp/_exclude
+	cleanup=$backup_host_dir/_cleanup
+
+	if [ ! -f $exclude ]
+	then
+		echo "The '_exclude' file is required in the backup directory ($backup_host_dir)"
+		exit 1
+	fi
+
+	if [ -e $backup_current ]
+	then
+		echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
+		exit 1
+	fi
+
+	cat << EOF > $exclude2
+/dev/*
+/mnt/*
+/media/*
+/proc/*
+/run/*
+/sys/*
+/var/cache/pacman/pkg/*
+EOF
+
+	echo -e "--------| Starting backup of $target at `date +%Y-%m-%d\ %H:%M:%S` |--------"
+
+	echo `clock`"Starting backup of $backup_host to $backup_current"
+	
+	backup_previous=$(ls -d1 $backup_host_dir/20* 2>/dev/null| sort -n | tail -1)
+	if [ $backup_previous ]
+	then
+		echo `clock`"Using $backup_previous for hardlinks"
+		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
+			--exclude-from=$exclude2 --link-dest=$backup_previous $target:/ "$backup_current"
+		rsync-check $?
+	else
+		echo `clock`"No previous backup detected in $backup_host_dir. Creating new full backup set"
+		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
+			--exclude-from=$exclude2 $target:/ "$backup_current"
+		rsync-check $?
+	fi
+
+	#Touching backup folder to set completion time
+	touch $backup_current
+
+	echo -n `clock`"Syncing filesystems... "
+	sync; check $?
+
+	if [ -f $cleanup ]
+	then
+		echo `clock`"Clean Up: Starting..."
+		for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
+		do
+			remove-backup $i
+		done
+		echo `clock`"Clean Up: Completed"
+	else
+		echo `clock`"Clean Up: Disabled; skipping..."
+	fi
+else
+	echo "$DATE Lock file $LOCK present. Aborting"
+fi
