@@ -70,7 +70,7 @@ if flock -xn 200; then
 		exit 1
 	fi
 
-	echo -e "-----------------------| Starting backup of ${HOST} at `date +%Y-%m-%d\ %H:%M:%S` |-----------------------"
+	echo -e "--------| Starting backup of ${HOST} at `date +%Y-%m-%d\ %H:%M:%S` |--------"
 
 	echo `clock`"Starting backup of ${backup_host} to ${backup_current}"
 	
