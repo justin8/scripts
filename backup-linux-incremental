@@ -52,6 +52,7 @@ fi
 if echo $(basename "$0") | grep -qE  "^backup-[a-z][a-z][a-z]+$"
 then
 	target=$(echo $(basename "$0") | sed 's/backup-//')
+	quiet=true
 else
 	target=$1
 fi
@@ -67,15 +68,6 @@ exec 200>$LOCK
 if flock -xn 200; then
 	trap "rm $LOCK" SIGINT SIGTERM
 	
-	x=0
-	while ! ssh -oBatchMode=yes  -oConnectTimeout=30 $target echo > /dev/null 2>&1
-	do
-		echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
-		[[ $x == 23 ]] && echo "Failng after too many attempts to contact host" && exit 1
-		((x++))
-		sleep 1h
-	done
-
 	# Instance variables
 	DATE=$(date +%Y-%m-%d)
 	backup_host_dir="$BACKUPDIR/$target"
@@ -92,9 +84,18 @@ if flock -xn 200; then
 
 	if [ -e $backup_current ]
 	then
-		echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
+		[[ -z "$quiet" ]] && echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
 		exit 1
 	fi
+
+	x=0
+	while ! ssh -oBatchMode=yes  -oConnectTimeout=30 $target echo > /dev/null 2>&1
+	do
+		echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
+		[[ $x == 10 ]] && echo "Failng after too many attempts to contact host" && exit 1
+		((x++))
+		sleep 10
+	done
 
 	cat << EOF > $exclude2
 /dev/*
