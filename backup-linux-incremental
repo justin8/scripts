@@ -85,14 +85,14 @@ if flock -xn 200; then
 	if [ -e $backup_current ]
 	then
 		[[ -z "$quiet" ]] && echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
-		exit 1
+		exit 0
 	fi
 
 	x=0
 	while ! ssh -oBatchMode=yes  -oConnectTimeout=30 $target echo > /dev/null 2>&1
 	do
 		echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
-		[[ $x == 10 ]] && echo "Failng after too many attempts to contact host" && exit 1
+		[[ $x == 10 ]] && [[ -z "$quiet" ]] && echo "Failng after too many attempts to contact host" && exit 0
 		((x++))
 		sleep 10
 	done
