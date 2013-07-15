@@ -20,6 +20,12 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+if [[ ! -b "$DEVICE" ]]
+then
+	echo "Backup device does not exist! Aborting..."
+	exit 1
+fi
+
 LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
