@@ -91,8 +91,9 @@ if flock -xn 200; then
 	x=0
 	while ! ssh -oBatchMode=yes  -oConnectTimeout=30 $target echo > /dev/null 2>&1
 	do
-		echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
-		[[ $x == 10 ]] && [[ -z "$quiet" ]] && echo "Failng after too many attempts to contact host" && exit 0
+		[[ -z "$quiet" ]] && echo "$(date +"%Y-%m-%d %H:%M:%S") Host is uncontactable!"
+		[[ $x == 10 ]] && [[ -z "$quiet" ]] && echo "Failng after too many attempts to contact host"
+		[[ $x == 10 ]] && exit 0
 		((x++))
 		sleep 10
 	done
