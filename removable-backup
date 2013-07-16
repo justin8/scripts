@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BACKUPDIR="/mnt/backup"
-LOG="/var/log/backup"
+LOG="/var/log/$(basename "$0").log"
 DATE=`date +%Y-%m-%d`
 DEVICE="/dev/disk/by-label/backup"
 
