@@ -9,7 +9,7 @@ DEVICE="/dev/disk/by-label/backup"
 cat << EOF > /tmp/backup-exclusion-list.txt
 anime
 documentaries
-game-installers/steamapps
+game-installers/Windows/steamapps
 movies
 recordings
 tv
@@ -30,7 +30,7 @@ LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
 
-	exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG}))
+	exec > >(tee $LOG) 2>&1
 	echo "" > ${LOG}
 
 	echo "${DATE} Starting in 5 seconds..."
