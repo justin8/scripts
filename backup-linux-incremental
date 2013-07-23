@@ -126,7 +126,7 @@ EOF
 		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
 			--exclude-from=$exclude2 $target:/ "$backup_current"
 		rsync-check $?
-		[[ $? ! 0 ]] && rm -rf "$backup_current"
+		[[ $? != 0 ]] && rm -rf "$backup_current"
 	fi
 
 	#Touching backup folder to set completion time
