@@ -19,6 +19,31 @@ elif [ $# != 2 ]; then
 	exit 1
 fi
 
+function link-repo {
+if echo $repo|grep -q games; then
+	for file in $REPO_PATH/$repo/*x86_64.pkg.tar*
+	do
+		echo "Linking file $file..." >> $LOG
+		ln -Pf "$file" "$CACHE_PATH/x86_64/$(basename "$file")"
+	done
+elif echo $repo|grep -q any; then
+	for file in $REPO_PATH/$repo/*.pkg.tar*
+	do
+		for cache in $CACHE_PATH/*
+		do
+			echo "Linking file $file..." >> $LOG
+			ln -Pf "$file" "$cache/$(basename "$file")"
+		done
+	done
+else
+	for file in $(ls $REPO_PATH/$repo/*.pkg.tar*)
+	do 
+		echo "Linking file $file..." >> $LOG
+		ln -Pf "$file" "$CACHE_PATH/$repo/$(basename "$file")"
+	done
+fi
+}
+
 repo=$(basename $(echo $1|sed 's/"//g'))
 file=$(echo $2|sed 's/"//g')
 if echo $repo|grep -q any; then
@@ -31,34 +56,15 @@ if echo $file|grep -q '.pkg.tar'
 then
 	echo "Adding file $file to repo $repo"
 	repo-add "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/$file
-	if echo $repo|grep -q any; then
-		for cache in $CACHE_PATH/*
-		do
-			ln -Pf "$REPO_PATH/$repo/$file" "$cache/$file"
-		done
-	else
-		ln -Pf "$REPO_PATH/$repo/$file" "$CACHE_PATH/$repo/$file"
-	fi
+	repo-add -f "$REPO_PATH/$repo/$REPO_NAME.files.tar.gz" $REPO_PATH/$repo/$file
+	link-repo
 elif [[ "z$file" == "z" ]]
 then
 	echo "Performing full update on repo: $repo"
 	rm -rf $REPO_PATH/$repo/$REPO_NAME*
-	repo-add -q "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar*
-	if echo $repo|grep -q any; then
-		for file in $REPO_PATH/$repo/*.pkg.tar*
-		do
-			for cache in $CACHE_PATH/*
-			do
-				ln -Pf "$file" "$cache/$(basename $file)"
-			done
-		done
-	else
-		for file in $(ls $REPO_PATH/$repo/*.pkg.tar*)
-		do
-	ln -Pf "$file" "$CACHE_PATH/$repo/$(basename $file)"
-		done
-	fi
-
+	repo-add "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar* >> $LOG
+	repo-add -f "$REPO_PATH/$repo/$REPO_NAME.files.tar.gz" $REPO_PATH/$repo/*.pkg.tar* >> $LOG
+	link-repo
 else
 	echo "Updated file ($file) was not a package; ignoring..." 
 	exit 0
