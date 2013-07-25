@@ -23,9 +23,11 @@ repo=$(basename $(echo $1|sed 's/"//g'))
 file=$(echo $2|sed 's/"//g')
 if echo $repo|grep -q any; then
 	REPO_NAME='dray.be-any'
+elif echo $repo|grep -q games; then
+	REPO_NAME='dray.be-games'
 fi
 
-if echo $file|grep -q 'pkg.tar.xz$'
+if echo $file|grep -q '.pkg.tar'
 then
 	echo "Adding file $file to repo $repo"
 	repo-add "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/$file
@@ -41,9 +43,9 @@ elif [[ "z$file" == "z" ]]
 then
 	echo "Performing full update on repo: $repo"
 	rm -rf $REPO_PATH/$repo/$REPO_NAME*
-	repo-add -q "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar.xz
+	repo-add -q "$REPO_PATH/$repo/$REPO_NAME.db.tar.gz" $REPO_PATH/$repo/*.pkg.tar*
 	if echo $repo|grep -q any; then
-		for file in $REPO_PATH/$repo/*.pkg.tar.xz
+		for file in $REPO_PATH/$repo/*.pkg.tar*
 		do
 			for cache in $CACHE_PATH/*
 			do
@@ -51,7 +53,7 @@ then
 			done
 		done
 	else
-		for file in $(ls $REPO_PATH/$repo/*.pkg.tar.xz)
+		for file in $(ls $REPO_PATH/$repo/*.pkg.tar*)
 		do
 	ln -Pf "$file" "$CACHE_PATH/$repo/$(basename $file)"
 		done
