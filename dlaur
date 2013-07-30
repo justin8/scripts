@@ -7,14 +7,34 @@ then
 	exit 1
 fi
 
+if echo $@|grep -q '\-\-build'
+then
+	build=true
+	packages=$(echo $@|sed 's/--build//g')
+else
+	packages=$@
+fi
+
+
 startdir=$(pwd)
 tmp=$(mktemp -d)
 [[ $? != 0 ]] && echo "An error has occurred while creating a temp directory! Aborting..." && exit 1
 cd $tmp
-aura -Aw $@
-for i in $@
+aura -Aw $packages
+for i in $packages
 do
-	cd "$startdir"
-	tar xf "$tmp/$i"*
+	cd "$tmp"
+	tar xf "$tmp/$i"*.tar.gz
+	rm -rf "$tmp/$i"*.tar.gz
+
+	if [[ ! -z "$build" ]]
+	then
+		cd "$tmp/$i"
+		makepkg -rcfs
+		mv *.pkg.tar* "$tmp"
+		rm -rf "$tmp/$i"
+	fi
 done
-rm -rf $tmp
+
+mv $tmp/* "$startdir"
+rm -rf "$tmp"
