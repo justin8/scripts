@@ -1,0 +1,20 @@
+#!/bin/bash
+# Script to download AUR packages
+
+if [[ $# == 0 ]]
+then
+	echo "You must provide a package name!"
+	exit 1
+fi
+
+startdir=$(pwd)
+tmp=$(mktemp -d)
+[[ $? != 0 ]] && echo "An error has occurred while creating a temp directory! Aborting..." && exit 1
+cd $tmp
+aura -Aw $@
+for i in $@
+do
+	cd "$startdir"
+	tar xf "$tmp/$i"*
+done
+rm -rf $tmp
