@@ -1,0 +1,32 @@
+#!/bin/bash
+
+BACKUPDIR=/raid/shares/backups/feed-the-beast
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+
+if screen -ls|grep -q 'feedthebeast'
+then
+	screen -S feedthebeast -X stuff 'say Backing up world...'
+	sleep 0.5
+	screen -S feedthebeast -X stuff 'save-all'
+
+	time=$(date +%Y-%m-%d_%H)
+	backup_current="$BACKUPDIR/$time"
+	backup_previous=$(ls -d1 $BACKUPDIR/* 2>/dev/null| sort -n | tail -1)
+
+
+	if [ $backup_previous ]
+	then
+		rsync -aAXHq --delete --link-dest="$backup_previous" /srv/feedthebeastd/ "$backup_current"
+	else
+		rsync -aAXHq --delete /srv/feedthebeastd/ "$backup_current"
+	fi
+	[[ $? != 0 ]] && echo 'An error has occurred during backup of Feed the Beast' || touch "$backup_current"
+
+	find $BACKUPDIR/* -maxdepth 0 -type d -mtime +2 -exec rm -rf {} \;
+fi
