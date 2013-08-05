@@ -25,8 +25,6 @@ do
 	done < $REPO/$curarch/$PACKAGES
 	echo "Downloading tarballs..."
 	dlaur $list > /dev/null
-##########testing
-echo $tmp
 	while read package
 	do
 		cd $tmp/$curarch
@@ -52,4 +50,5 @@ echo $tmp
 		fi
 	done < $REPO/$curarch/$PACKAGES
 done
-#[[ -d "$tmp"]] && rm -rf "$tmp"
+echo "$tmp"
+[[ -d "$tmp" ]] && rm -rf "$tmp"
