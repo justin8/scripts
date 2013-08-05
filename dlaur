@@ -7,6 +7,12 @@ then
 	exit 1
 fi
 
+if [[ $1 == '--help' ]]
+then
+	echo "USAGE: $(basename $0) [--build] package 1 [package 2] [package N]"
+	exit 0
+fi
+
 if echo $@|grep -q '\-\-build'
 then
 	build=true
