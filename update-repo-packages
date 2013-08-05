@@ -1,0 +1,55 @@
+#!/bin/bash
+ARCHS='any x86_64'
+REPO=/srv/repo
+PACKAGES='build/packages.list'
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+# Functions
+DIR=`dirname $(readlink -f "$0")`
+. $DIR/lib/check
+
+tmp=$(mktemp -d)
+trap "rm -rf $tmp" SIGINT SIGTERM
+for curarch in $ARCHS
+do
+	mkdir "$tmp/$curarch"
+	cd $tmp/$curarch
+	while read package
+	do
+		list="$list $package"
+	done < $REPO/$curarch/$PACKAGES
+	echo "Downloading tarballs..."
+	dlaur $list > /dev/null
+##########testing
+echo $tmp
+	while read package
+	do
+		cd $tmp/$curarch
+		. $tmp/$curarch/$package/PKGBUILD
+		[[ $? != 0 ]] && echo "An error has occurred while parsing $package. Aborting..." && exit 1
+		[[ ! -z "$epoch" ]] && pkgname="$epoch:$pkgname"
+		packageversion="$pkgname-$pkgver-$pkgrel"
+		unset pkgname pkgver pkgrel arch epoch
+		if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion"
+		then
+			echo "$curarch/$package is already up-to-date. Skipping..."
+		else
+			echo "Building $curarch/${package}..."
+			cd $tmp/$curarch/$package
+			yes|makepkg -rcfs --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
+			if [[ $? != 0 ]]; then
+				echo "An error occurred during build... makepkg output will display in 3 seconds"
+				sleep 3
+				cat $tmp/$curarch/$package/makepkg.log
+			else
+				mv $tmp/$curarch/$package/${packageversion}*.pkg* $REPO/$curarch
+			fi
+		fi
+	done < $REPO/$curarch/$PACKAGES
+done
+#[[ -d "$tmp"]] && rm -rf "$tmp"
