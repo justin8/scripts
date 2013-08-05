@@ -66,6 +66,10 @@ if flock -xn 200; then
 	sync
 
 	echo "${DATE} Backup completed. Unmounting drive and cleaning up..."
+	while lsof $BACKUPDIR > /dev/null || lsof $DEVICE > /dev/null
+	do
+		sleep 1
+	done
 	umount -f ${BACKUPDIR}
 	rm -f ${DEVICE}
 	rm /tmp/backup-exclusion-list.txt
