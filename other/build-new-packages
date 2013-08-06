@@ -47,5 +47,4 @@ do
 		fi
 	done < $REPO/$curarch/$PACKAGES
 done
-echo "$tmp"
 [[ -d "$tmp" ]] && rm -rf "$tmp"
