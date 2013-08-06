@@ -9,10 +9,6 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
-# Functions
-DIR=`dirname $(readlink -f "$0")`
-. $DIR/lib/check
-
 tmp=$(mktemp -d)
 trap "rm -rf $tmp" SIGINT SIGTERM
 for curarch in $ARCHS
