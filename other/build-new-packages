@@ -15,6 +15,7 @@ for curarch in $ARCHS
 do
 	mkdir "$tmp/$curarch"
 	cd $tmp/$curarch
+	list=""
 	while read package
 	do
 		list="$list $package"
@@ -35,7 +36,7 @@ do
 		else
 			echo "Building $curarch/${package}..."
 			cd $tmp/$curarch/$package
-			yes|makepkg -rcfs --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
+			yes ""|makepkg -rcfs --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
 			if [[ $? != 0 ]]; then
 				echo "An error occurred during build... makepkg output will display in 3 seconds"
 				sleep 3
