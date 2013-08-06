@@ -9,6 +9,10 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+echo "Updating package lists..."
+pacman -Sy
+[[ $? != 0 ]] && echo "An error has occurred while updating the package lists. Aborting..." && exit 1
+
 tmp=$(mktemp -d)
 trap "rm -rf $tmp" SIGINT SIGTERM
 for curarch in $ARCHS
