@@ -6,12 +6,17 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+function check {
+[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
+[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]"
+}
+
 echo "This will configure XBMC to get all library, settings and thumbnails from abachi."
 echo "Press enter to continue..."
 read
 
 mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
-packages='git i3-wm pamixer pasystray-git pavucontrol polkit pulseaudio slim sudo xbmc xorg-server xorg-xinit'
+packages='git slim sudo'
 
 install=''
 for package in $packages
@@ -86,6 +91,8 @@ if ! grep -q 'default_user xbmc' /etc/slim.conf
 then
 	echo 'default_user xbmc' >> /etc/slim.conf
 fi
-systemctl enable slim
+echo -n 'Enabling display manager... '
+systemctl enable slim > /dev/null
+check $?
 
 echo "Complete!"
