@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+echo "This will configure XBMC to get all library, settings and thumbnails from abachi."
+echo "Press enter to continue..."
+read
+
+mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
+packages='git i3-wm pamixer pasystray-git pavucontrol polkit pulseaudio slim sudo xbmc xorg-server xorg-xinit'
+
+install=''
+for package in $packages
+do
+	if ! pacman -Q $package > /dev/null 2>&1
+	then
+		install="$install $package"
+	fi
+done
+
+if [[ ! -z "$install" ]]
+then
+	pacman -Syq --noconfirm $install
+	[[ $? != 0 ]] && echo 'An error has occurred. Aborting...' && exit 1
+fi
+
+mkdir -p /mnt/xbmc
+if ! grep -q '/mnt/xbmc' /etc/fstab
+then
+	echo "//abachi/xbmc		/mnt/xbmc		cifs	credentials=/root/.smbcreds,uid=1000,gid=1000,noauto,x-systemd.automount  0       0" >> /etc/fstab
+fi
+mount /mnt/xbmc > /dev/null 2>&1
+rc=$?
+[[ $rc != 0 ]] && [[ $rc != 32 ]] && echo 'An error has occurred while trying to mount the xbmc share. Aborting...' && exit 1
+
+if [ ! -e /mnt/xbmc/pxe/$mac ]; then
+	mkdir -p /mnt/xbmc/pxe/$mac
+	rsync -rltv --exclude='Thumbnails' /mnt/xbmc/template/* /mnt/xbmc/pxe/$mac/
+
+	# Replace advancedsettings with a symlink
+	rm /mnt/xbmc/pxe/$mac/userdata/advancedsettings.xml
+	ln -s /mnt/xbmc/template/userdata/advancedsettings.xml /mnt/xbmc/pxe/$mac/userdata/advancedsettings.xml
+
+	# Replace thumbnails with a symlink
+	rm -rf /mnt/xbmc/pxe/$mac/userdata/Thumbnails
+	ln -s /mnt/xbmc/template/userdata/Thumbnails /mnt/xbmc/pxe/$mac/userdata/Thumbnails
+fi
+
+sed -i '/%wheel ALL=(ALL) NOPASSWD/s/^#//' /etc/sudoers
+
+mkdir -p /var/lib/xbmc/.xbmc
+if ! grep -q '/var/lib/xbmc/.xbmc' /etc/fstab
+then
+	echo "/mnt/xbmc/pxe/$mac /var/lib/xbmc/.xbmc none bind,noauto,x-systemd.automount 0 0" >> /etc/fstab
+fi
+mount -a
+
+#Patch Confluence skin
+cp /mnt/xbmc/IncludesHomeMenuItems.xml /usr/share/xbmc/addons/skin.confluence/720p/IncludesHomeMenuItems.xml
+
+#Copy in xbmc-wrapper script
+cp /mnt/xbmc/xbmc-wrapper /usr/local/bin
+chmod +x /usr/local/bin/xbmc-wrapper
+
+#Set up user customizations
+[[ -d ~/.dotfiles ]] && cd ~/.dotfiles && git pull > /dev/null
+[[ ! -d ~/.dotfiles ]] && cd ~ && git clone http://github.com/justin8/dotfiles .dotfiles
+~/.dotfiles/install
+
+rsync -a ~/.dotfiles ~xbmc/
+chown -R xbmc. $(getent passwd xbmc|cut -d: -f6) > /dev/null 2>&1
+su xbmc -c '~/.dotfiles/install --target=xbmc'
+usermod -a -s '/usr/bin/zsh' -G 'audio,optical,storage,power,video,wheel' xbmc
+
+#Configure slim for auto logins
+if ! grep -q 'auto_login yes' /etc/slim.conf
+then
+	echo 'auto_login yes' >> /etc/slim.conf
+fi
+
+if ! grep -q 'default_user xbmc' /etc/slim.conf
+then
+	echo 'default_user xbmc' >> /etc/slim.conf
+fi
+systemctl enable slim
+
+echo "Complete!"
