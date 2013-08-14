@@ -65,10 +65,10 @@ fi
 mount -a
 
 #Patch Confluence skin
-cp /mnt/xbmc/IncludesHomeMenuItems.xml /usr/share/xbmc/addons/skin.confluence/720p/IncludesHomeMenuItems.xml
+cp /mnt/xbmc/files/IncludesHomeMenuItems.xml /usr/share/xbmc/addons/skin.confluence/720p/IncludesHomeMenuItems.xml
 
 #Copy in xbmc-wrapper script
-cp /mnt/xbmc/xbmc-wrapper /usr/local/bin
+cp /mnt/xbmc/files/xbmc-wrapper /usr/local/bin
 chmod +x /usr/local/bin/xbmc-wrapper
 
 #Set up user customizations
