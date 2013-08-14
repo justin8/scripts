@@ -74,16 +74,16 @@ chmod +x /usr/local/bin/xbmc-wrapper
 #Enable power control for xbmc
 cat << EOF > /etc/polkit-1/rules.d/10-xbmc.rules
 polkit.addRule(function(action, subject) {
-if(action.id.match("org.freedesktop.login1.") && subject.isInGroup("power")) {
-	return polkit.Result.YES;
-}
+	if(action.id.match("org.freedesktop.login1.") && subject.isInGroup("power")) {
+		return polkit.Result.YES;
+	}
 });
 
 polkit.addRule(function(action, subject) {
-if (action.id.indexOf("org.freedesktop.udisks") == 0 && subject.isInGroup("storage")) {
-	return polkit.Result.YES;
-}
-);
+	if (action.id.indexOf("org.freedesktop.udisks") == 0 && subject.isInGroup("storage")) {
+		return polkit.Result.YES;
+	}
+});
 EOF
 
 #Set up user customizations
