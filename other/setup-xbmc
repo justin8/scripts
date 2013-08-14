@@ -16,7 +16,7 @@ echo "Press enter to continue..."
 read
 
 mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
-packages='git slim sudo'
+packages='git polkit slim sudo'
 
 install=''
 for package in $packages
@@ -70,6 +70,21 @@ cp /mnt/xbmc/files/IncludesHomeMenuItems.xml /usr/share/xbmc/addons/skin.conflue
 #Copy in xbmc-wrapper script
 cp /mnt/xbmc/files/xbmc-wrapper /usr/local/bin
 chmod +x /usr/local/bin/xbmc-wrapper
+
+#Enable power control for xbmc
+cat << EOF > /etc/polkit-1/rules.d/10-xbmc.rules
+polkit.addRule(function(action, subject) {
+if(action.id.match("org.freedesktop.login1.") && subject.isInGroup("power")) {
+	return polkit.Result.YES;
+}
+});
+
+polkit.addRule(function(action, subject) {
+if (action.id.indexOf("org.freedesktop.udisks") == 0 && subject.isInGroup("storage")) {
+	return polkit.Result.YES;
+}
+);
+EOF
 
 #Set up user customizations
 [[ -d ~/.dotfiles ]] && cd ~/.dotfiles && git pull > /dev/null
