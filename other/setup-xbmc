@@ -16,7 +16,7 @@ echo "Press enter to continue..."
 read
 
 mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
-packages='git polkit slim sudo'
+packages='git polkit slim sudo xbmc'
 
 install=''
 for package in $packages
@@ -91,7 +91,7 @@ EOF
 [[ ! -d ~/.dotfiles ]] && cd ~ && git clone http://github.com/justin8/dotfiles .dotfiles
 ~/.dotfiles/install
 
-rsync -a ~/.dotfiles ~xbmc/
+rsync -a ~/.dotfiles /var/lib/xbmc/
 chown -R xbmc. $(getent passwd xbmc|cut -d: -f6) > /dev/null 2>&1
 su xbmc -c '~/.dotfiles/install --target=xbmc'
 usermod -a -s '/usr/bin/zsh' -G 'audio,optical,storage,power,video,wheel' xbmc
