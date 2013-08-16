@@ -16,7 +16,7 @@ echo "Press enter to continue..."
 read
 
 mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
-packages='git polkit slim sudo xbmc'
+packages='ethtool git polkit slim sudo xbmc'
 
 install=''
 for package in $packages
