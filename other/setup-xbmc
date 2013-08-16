@@ -110,4 +110,11 @@ echo -n 'Enabling display manager... '
 systemctl enable slim > /dev/null
 check $?
 
+echo 'Enabling WoL...'
+echo 'ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*", RUN+="/usr/bin/ethtool -s %k wol g"' > /etc/udev/rules.d/50-wol.rules
+for dev in /sys/class/net/*
+do
+	echo 'enabled' | tee $dev/device/power/wakeup > /dev/null 2>&1
+done
+
 echo "Complete!"
