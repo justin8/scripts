@@ -21,6 +21,6 @@ check $?
 echo -n "${DATE} Backing up XBMC music database... "
 mysqldump -u root -pninet41ls MyMusic32 | gzip -1 > $BACKUPDIR/MyMusic32.${DATE}.sql.gz
 check $?
-echo "${DATE} Cleaning up backups older than ${DAYSTOKEEPBACKUPS} days..."
+echo -n "${DATE} Cleaning up backups older than ${DAYSTOKEEPBACKUPS} days..."
 find ${BACKUPDIR} -mtime +${DAYSTOKEEPBACKUPS} -exec rm {} \;
 check $?
