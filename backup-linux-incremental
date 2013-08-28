@@ -120,17 +120,20 @@ EOF
 		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
 			--exclude-from=$exclude2 --link-dest="$backup_previous" $target:/ "$backup_current"
 		rsync-check $?
-		[[ $? != 0 ]] && rm -rf "$backup_current"
+		[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
 	else
 		echo `clock`"No previous backup detected in $backup_host_dir. Creating new full backup set"
 		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
 			--exclude-from=$exclude2 $target:/ "$backup_current"
 		rsync-check $?
-		[[ $? != 0 ]] && rm -rf "$backup_current"
+		[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
 	fi
 
+	# Maybe move the above touch backup_current lines out to here? Perhaps move the rsync check out to here as well
+	# Unless the if statement will have it's own return code?
+
 	#Touching backup folder to set completion time
-	touch $backup_current
+	#touch $backup_current
 
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
