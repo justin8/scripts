@@ -16,7 +16,7 @@ echo "Press enter to continue..."
 read
 
 mac=$(ip link show eth0|grep -Po '[0-f]+:[0-f]+[0-f]+:[0-f]+:[0-f]+:[0-f]+:[0-f]+(?=\s)'|sed 's/:/-/g')
-packages='ethtool git polkit slim sudo xbmc'
+packages='ethtool git polkit slim sudo udisks xbmc'
 
 install=''
 for package in $packages
@@ -106,6 +106,8 @@ if ! grep -q 'default_user xbmc' /etc/slim.conf
 then
 	echo 'default_user xbmc' >> /etc/slim.conf
 fi
+sed -i 's#login_cmd.*#login_cmd           exec dbus-launch /bin/bash -login ~/.xinitrc %session#' /etc/slim.conf
+
 echo -n 'Enabling display manager... '
 systemctl enable slim > /dev/null
 check $?
