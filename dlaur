@@ -30,7 +30,7 @@ aura -Aw $packages
 for i in $packages
 do
 	cd "$tmp"
-	test=$(ls $i)
+	test=$(ls $i*)
 	if [[ -z $test ]]
 	then
 		echo "Package $i was not found"
