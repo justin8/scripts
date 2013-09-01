@@ -29,7 +29,8 @@ do
 	while read package
 	do
 		cd $tmp/$curarch
-		. $tmp/$curarch/$package/PKGBUILD
+		grep -E "^\s*(pkgver|pkgrel|epoch|pkgname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
+		. $tmp/$curarch/$package/temp
 		[[ $? != 0 ]] && echo "An error has occurred while parsing $package. Aborting..." && exit 1
 		[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
 		packageversion="$pkgname-$pkgver-$pkgrel"
