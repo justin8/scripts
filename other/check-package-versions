@@ -25,7 +25,7 @@ do
 	do
 		list="$list $package"
 	done < $REPO/$curarch/$PACKAGES
-	echo "Downloading tarballs for $curarch architecture..."
+	echo "Downloading tarballs for $curarch repo..."
 	dlaur $list > /dev/null
 	while read package
 	do
