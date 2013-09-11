@@ -16,10 +16,10 @@ exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG})
 echo "" > ${LOG}
 
 echo -n "${DATE} Backing up XBMC video database... "
-mysqldump -u root -pninet41ls MyVideos75 | gzip -1 > $BACKUPDIR/MyVideos75.${DATE}.sql.gz
+mysqldump -u root -pninet41ls MyVideos75 | gzip -1 > $BACKUPDIR/MyVideos76.${DATE}.sql.gz
 check $?
 echo -n "${DATE} Backing up XBMC music database... "
-mysqldump -u root -pninet41ls MyMusic32 | gzip -1 > $BACKUPDIR/MyMusic32.${DATE}.sql.gz
+mysqldump -u root -pninet41ls MyMusic32 | gzip -1 > $BACKUPDIR/MyMusic37.${DATE}.sql.gz
 check $?
 echo -n "${DATE} Cleaning up backups older than ${DAYSTOKEEPBACKUPS} days..."
 find ${BACKUPDIR} -mtime +${DAYSTOKEEPBACKUPS} -exec rm {} \;
