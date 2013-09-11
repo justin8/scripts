@@ -12,34 +12,19 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
-if [[ $1 == "xbmc" ]]; then
-	echo "Building XBMC variant ISO..."
-	BUILDDIR=${XBMCBUILDDIR}
-	XBMCBUILD="true"
-else
-	XBMCBUILD="false"
-fi
-
 echo "Preparing build environment..."
 cd $BUILDDIR
 rm -rf $BUILDDIR/work
 
-if [[ $XBMCBUILD == "false" ]]; then
-	mkdir -p $BUILDDIR/root-image/usr/local/bin
-	rm -rf $BUILDDIR/root-image/usr/local/bin/*
-	cp -L $SCRIPTS/* $BUILDDIR/root-image/usr/local/bin
-	echo "Building ISO (this may take several minutes)..."
-	./build.sh -vo $OUTPUT > $LOG 2>&1
-	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
-else
-	echo "Building ISO (this may take several minutes)..."
-	./build.sh -vo $OUTPUT > $LOG 2>&1
-	[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
-fi
+mkdir -p $BUILDDIR/root-image/usr/local/bin
+rm -rf $BUILDDIR/root-image/usr/local/bin/*
+cp -L $SCRIPTS/* $BUILDDIR/root-image/usr/local/bin
+echo "Building ISO (this may take several minutes)..."
+./build.sh -vo $OUTPUT > $LOG 2>&1
+[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
 
 rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
 
 echo "Updating PXE boot image on bloodwood..."
-[[ $XBMCBUILD == "false" ]] && ssh bloodwood "/root/update-arch-pxe"
-[[ $XBMCBUILD == "true" ]] && ssh bloodwood "/root/update-arch-pxe xbmc"
+ssh bloodwood "/root/update-arch-pxe"
