@@ -37,7 +37,7 @@ do
 		unset pkgname pkgver pkgrel arch epoch
 		if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion"
 		then
-			echo "$curarch/$package is already up-to-date. Skipping..."
+			echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
 		else
 			echo "$curarch/$package is out of date. Building..."
 			cd $tmp/$curarch/$package
