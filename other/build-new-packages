@@ -30,7 +30,7 @@ do
 	do
 		if [[ -d "$tmp/$curarch/$package" ]]; then
 			cd $tmp/$curarch
-			grep -E "^\s*(pkgver|pkgrel|epoch|pkgname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
+			grep -E "^\s*(pkgver|pkgrel|epoch|pkgname|_gitname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
 			. $tmp/$curarch/$package/temp
 			[[ $? != 0 ]] && echo "An error has occurred while parsing $package. Aborting..." && exit 1
 			[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
