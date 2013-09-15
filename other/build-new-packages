@@ -1,7 +1,8 @@
 #!/bin/bash
-ARCHS='any x86_64'
+ARCHS="any $(uname -m)"
 REPO=/srv/repo
 PACKAGES='build/packages.list'
+ARCHS=$(echo $ARCHS | sed 's/armv7l/armv7h/') #uname reports different architecture to what makepkg looks for
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
@@ -35,20 +36,20 @@ do
 			[[ $? != 0 ]] && echo "An error has occurred while parsing $package. Aborting..." && exit 1
 			[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
 			packageversion="$pkgname-$pkgver-$pkgrel"
-			unset pkgname pkgver pkgrel arch epoch
+			unset pkgver pkgrel arch epoch
 			if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion"
 			then
 				echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
 			else
 				echo "$curarch/$package is out of date. Building..."
 				cd $tmp/$curarch/$package
-				yes ""|makepkg -rcfs --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
+				yes ""|makepkg -rcfsA --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
 				if [[ $? != 0 ]]; then
 					echo "An error occurred during build... makepkg output will display in 3 seconds"
 					sleep 3
 					cat $tmp/$curarch/$package/makepkg.log
 				else
-					mv $tmp/$curarch/$package/${packageversion}*.pkg* $REPO/$curarch
+					mv $tmp/$curarch/$package/${pkgname}*.pkg* $REPO/$curarch
 				fi
 			fi
 		else
