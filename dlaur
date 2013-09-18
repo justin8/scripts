@@ -38,8 +38,8 @@ else
 		then
 			echo "Package $i was not found"
 		else
-			tar xf "$tmp/$i"*.tar.gz
-			rm -rf "$tmp/$i"*.tar.gz
+			tar xf "$tmp/$i.tar.gz"
+			rm -rf "$tmp/$i.tar.gz"
 		fi
 	done
 
