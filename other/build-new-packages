@@ -43,6 +43,7 @@ do
 			else
 				echo "$curarch/$package is out of date. Building..."
 				cd $tmp/$curarch/$package
+				sed -i '/PKGEXT/d' PKGBUILD
 				yes ""|makepkg -rcfsA --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
 				if [[ $? != 0 ]]; then
 					echo "An error occurred during build... makepkg output will display in 3 seconds"
