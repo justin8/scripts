@@ -1,5 +1,5 @@
 #!/bin/bash
-LOCK="/run/lock/$0"
+LOCK="/run/lock/$(basename "$0")"
 ARCHS="any $(uname -m)"
 REPO=/srv/repo
 PACKAGES='build/packages.list'
