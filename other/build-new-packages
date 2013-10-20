@@ -11,11 +11,33 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
-while getopts ":f" OPTION
+usage()
+{
+	cat <<-EOF
+	usage: $(basename $0) options
+
+	DETAILS SHOULD BE HERE!
+
+	OPTIONS:
+	-h      Show help
+	-a      Specify a specific architecture to build for. (Defaults to: $ARCHS)
+	-f      Perform a full recompile of all specified architectures
+	EOF
+}
+
+
+while getopts ":a:fh" OPTION
 do
 	case $OPTION in
+		h)
+			usage
+			exit 0
+			;;
 		f)
 			full_update=true
+			;;
+		a)
+			ARCHS=$OPTARG
 			;;
 	esac
 done
