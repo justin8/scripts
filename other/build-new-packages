@@ -11,6 +11,15 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+while getopts ":f" OPTION
+do
+	case $OPTION in
+		f)
+			full_update=true
+			;;
+	esac
+done
+
 exec 200>$LOCK
 if flock -xn 200; then
 echo "Updating package lists..."
@@ -40,7 +49,7 @@ do
 			[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
 			packageversion="$pkgname-$pkgver-$pkgrel"
 			unset pkgver pkgrel arch epoch
-			if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion"
+			if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion" && [[ -z full_update ]]
 			then
 				echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
 			else
