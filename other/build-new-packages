@@ -3,7 +3,7 @@ LOCK="/run/lock/$(basename "$0")"
 ARCHS="any $(uname -m)"
 REPO=/srv/repo
 PACKAGES='build/packages.list'
-ARCHS=$(echo $ARCHS | sed 's/armv7l/armv7h/') #uname reports different architecture to what makepkg looks for
+ARCHS=$(echo $ARCHS | sed -e 's/armv6l/armv6h/' -e 's/armv7l/armv7h/') #uname reports different architecture to what makepkg looks for
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
