@@ -75,7 +75,12 @@ do
 			then
 				echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
 			else
-				echo "$curarch/$package is out of date. Building..."
+				if [[ -z $full_update ]]
+				then
+					echo "${curarch}/${package} is out of date. Building..."
+				else
+					echo "Building ${curarch}/${package}..."
+				fi
 				cd $tmp/$curarch/$package
 				sed -i '/PKGEXT/d' PKGBUILD
 				yes ""|makepkg -rcfsA --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
