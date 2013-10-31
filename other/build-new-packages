@@ -68,7 +68,7 @@ if flock -xn 200; then
 				unset pkgname
 				grep -E "^\s*(pkgver|pkgrel|epoch|pkgname|_pkgname|_gitname|_gemname|_srcname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
 				. $tmp/$curarch/$package/temp
-				if [[ $? != 0]] || [[ -z "$pkgname" ]]
+				if [[ $? != 0 ]] || [[ -z "$pkgname" ]]
 				then
 					echo "An error has occurred while parsing $package. Aborting..."
 				else
