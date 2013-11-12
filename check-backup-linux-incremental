@@ -15,7 +15,7 @@ fi
 
 if echo $(basename "$0") | grep -qE  "^check-backup-[a-z][a-z][a-z]+$"
 then
-	target=$(echo $(basename "$0") | sed 's/backup-//')
+	target=$(echo $(basename "$0") | sed 's/check-backup-//')
 else
 	target=$1
 fi
