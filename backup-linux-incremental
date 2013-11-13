@@ -109,6 +109,7 @@ if flock -xn 200; then
 /run/*
 /sys/*
 /var/cache/pacman/pkg/*
+/var/lib/mlocate/mlocate.db
 EOF
 
 	echo -e "--------| Starting backup of $target at `date +%Y-%m-%d\ %H:%M:%S` |--------"
