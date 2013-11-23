@@ -7,7 +7,7 @@ VIDEOSDB=MyVideos76
 DAYSTOKEEPBACKUPS=30
 
 DIR=`dirname $(readlink -f "${0}")`
-. ${DIR}/lib/check
+. ${DIR}/../lib/check
 
 if [[ $EUID -ne 0 ]]; then
 	echo "This script must be run as root" 1>&2

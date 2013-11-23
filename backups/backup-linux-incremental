@@ -18,7 +18,7 @@ fi
 
 # Functions
 DIR=`dirname $(readlink -f "$0")`
-. $DIR/lib/check
+. $DIR/../lib/check
 
 
 clock () { echo -n "[`date +%H:%M:%S`] "; }
