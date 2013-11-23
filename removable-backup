@@ -6,13 +6,22 @@ DATE=`date +%Y-%m-%d`
 DEVICE="/dev/disk/by-label/backup"
 
 #Exclusion list (for shares only):
-cat << EOF > /tmp/backup-exclusion-list.txt
+cat << EOF > /tmp/shares-exclusion-list.txt
 anime
 documentaries
 game-installers/Windows/steamapps
 movies
 recordings
 tv
+EOF
+
+cat << EOF > /tmp/server-files-exclusion-list.txt
+.abachi.swap
+downloads
+system/pacman-cache/x86_64/*
+system/pacman-cache/armv7h/*
+system/pacman-cache/armv6h/*
+XBMC-Thumbnails
 EOF
 
 if [[ $EUID -ne 0 ]]; then
@@ -58,9 +67,9 @@ if flock -xn 200; then
 
 	echo "${DATE} Rsync-ing everything..."
 	rsync -aAXvH --delete --delete-excluded /etc ${BACKUPDIR}
-	rsync -aAXvH --delete --delete-excluded --exclude=.abachi.swap --exclude=downloads /raid/server-files ${BACKUPDIR}
+	rsync -aAXvH --delete --delete-excluded --exclude-from='/tmp/server-files-exclusion-list.txt' /raid/server-files ${BACKUPDIR}
 	rsync -aAXvH --delete --delete-excluded /raid/home ${BACKUPDIR}
-	rsync -aAXvH --delete --delete-excluded --exclude-from='/tmp/backup-exclusion-list.txt' /raid/shares ${BACKUPDIR}
+	rsync -aAXvH --delete --delete-excluded --exclude-from='/tmp/shares-exclusion-list.txt' /raid/shares ${BACKUPDIR}
 
 	echo "${DATE} Syncing filesystems..."
 	sync

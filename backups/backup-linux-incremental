@@ -30,7 +30,7 @@ function rsync-check {
 
 function remove-backup {
 	echo `clock`"Clean Up: $1 backup has been detected as over 30 days old"
-	if [ "x$cleanup" = "x" ]
+	if [[ -z "$cleanup" ]]
 	then
 		echo `clock`"Clean Up: An error has occurred during cleanup; $1 will NOT be deleted"
 	else
@@ -44,12 +44,6 @@ function remove-backup {
 	fi
 }
 
-if [[ $# != 1 ]] && ! echo $(basename "$0") | grep -qE "^backup-[a-z][a-z][a-z]+$"
-then
-	echo "Please specify a host to back up"
-	exit 1
-fi
-
 if echo $(basename "$0") | grep -qE  "^backup-[a-z][a-z][a-z]+$"
 then
 	target=$(echo $(basename "$0") | sed 's/backup-//')
@@ -58,19 +52,27 @@ else
 	target=$1
 fi
 
-if [[ "x$target" == "x" ]];then echo "Please specify a host to back up";exit 1;fi
+if [[ -z "$target" ]]
+then
+	echo "Please specify a host to back up"
+	exit 1
+fi
 
-LOG="/var/log/backup-$target-incremental.log"
+LOG="/var/log/backup-linux-incremental-$target.log"
 LOCK="/run/lock/backup-linux-incremental-$target"
 
-echo "" > $LOG
-exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > $LOG))
+if [[ -z "$quiet" ]]
+then
+	exec > >(tee $LOG)
+else
+	exec > $LOG
+fi
+
 exec 200>$LOCK
 if flock -xn 200; then
 	trap "rm $LOCK" SIGINT SIGTERM
 	
 	# Instance variables
-	DATE=$(date +%Y-%m-%d)
 	backup_host_dir="$BACKUPDIR/$target"
 	backup_current="$backup_host_dir/$DATE"
 	exclude=$backup_host_dir/_exclude
@@ -117,23 +119,16 @@ EOF
 	if [ $backup_previous ]
 	then
 		echo `clock`"Using $backup_previous for hardlinks"
-		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
-			--exclude-from=$exclude2 --link-dest="$backup_previous" $target:/ "$backup_current"
-		rsync-check $?
-		[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
+		inc=--link-dest=$backup_previous
 	else
 		echo `clock`"No previous backup detected in $backup_host_dir. Creating new full backup set"
-		rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
-			--exclude-from=$exclude2 $target:/ "$backup_current"
-		rsync-check $?
-		[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
+		inc=""
 	fi
 
-	# Maybe move the above touch backup_current lines out to here? Perhaps move the rsync check out to here as well
-	# Unless the if statement will have it's own return code?
-
-	#Touching backup folder to set completion time
-	#touch $backup_current
+	rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
+		--exclude-from=$exclude2 $inc $target:/ "$backup_current"
+	rsync-check $?
+	[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
 
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
