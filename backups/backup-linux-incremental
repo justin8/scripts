@@ -75,6 +75,8 @@ if flock -xn 200; then
 	# Instance variables
 	backup_host_dir="$BACKUPDIR/$target"
 	backup_current="$backup_host_dir/$DATE"
+	rsyncopts="-aHAX"
+	rsyncoptsfile=$backup_host_dir/_rsyncopts
 	exclude=$backup_host_dir/_exclude
 	exclude2=/tmp/$(basename "$0")_exclude
 	cleanup=$backup_host_dir/_cleanup
@@ -83,6 +85,11 @@ if flock -xn 200; then
 	then
 		echo "The '_exclude' file is required in the backup directory ($backup_host_dir)"
 		exit 1
+	fi
+
+	if [ -f $rsyncoptsfile ]
+	then
+		rsyncopts=$(head -n1 $rsyncoptsfile)
 	fi
 
 	if [ -e $backup_current ]
@@ -126,7 +133,7 @@ EOF
 		inc=""
 	fi
 
-	rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
+	rsync $rsyncopts --stats --delete --delete-excluded --exclude-from=$exclude \
 		--exclude-from=$exclude2 $inc $target:/ "$backup_current"
 	rsync-check $?
 	[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
