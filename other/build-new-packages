@@ -28,18 +28,63 @@ usage()
 while getopts ":a:fh" OPTION
 do
 	case $OPTION in
-		h)
-			usage
-			exit 0
+		a)
+			ARCHS=$OPTARG
 			;;
 		f)
 			full_update=true
 			;;
-		a)
-			ARCHS=$OPTARG
+		h)
+			usage
+			exit 0
 			;;
 	esac
 done
+
+build()
+{
+	tmp=$1
+	curarch=$2
+	package=$3
+	if [[ -d "$tmp/$curarch/$package" ]]; then
+		cd $tmp/$curarch
+		unset pkgname
+		grep -E "^\s*(pkgver|pkgrel|epoch|pkgname|_pkgname|_gitname|_gemname|_srcname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
+		. $tmp/$curarch/$package/temp
+		if [[ $? != 0 ]] || [[ -z "$pkgname" ]]
+		then
+			echo "An error has occurred while parsing $package. Aborting..."
+		else
+			[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
+			packageversion="$pkgname-$pkgver-$pkgrel"
+			unset pkgver pkgrel arch epoch
+			if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion" && [[ -z $full_update ]]
+			then
+				echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
+			else
+				if [[ -z $full_update ]]
+				then
+					echo "${curarch}/${package} is out of date. Building..."
+				else
+					echo "Building ${curarch}/${package}..."
+				fi
+				cd $tmp/$curarch/$package
+				sed -i '/PKGEXT/d' PKGBUILD
+				yes ""|makepkg -rcfsA --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
+				if [[ $? != 0 ]]; then
+					echo "An error occurred during build... makepkg output will display in 3 seconds"
+					sleep 3
+					cat $tmp/$curarch/$package/makepkg.log
+				else
+					mv $tmp/$curarch/$package/${pkgname}*.pkg* $REPO/$curarch
+				fi
+			fi
+		fi
+	else
+		echo "Unable to find package $package. Skipping..."
+	fi
+
+}
 
 exec 200>$LOCK
 if flock -xn 200; then
@@ -62,43 +107,7 @@ if flock -xn 200; then
 		dlaur $list > /dev/null
 		while read package
 		do
-			if [[ -d "$tmp/$curarch/$package" ]]; then
-				cd $tmp/$curarch
-				unset pkgname
-				grep -E "^\s*(pkgver|pkgrel|epoch|pkgname|_pkgname|_gitname|_gemname|_srcname)=" $tmp/$curarch/$package/PKGBUILD >> $tmp/$curarch/$package/temp
-				. $tmp/$curarch/$package/temp
-				if [[ $? != 0 ]] || [[ -z "$pkgname" ]]
-				then
-					echo "An error has occurred while parsing $package. Aborting..."
-				else
-					[[ ! -z "$epoch" ]] && pkgver="$epoch:$pkgver"
-					packageversion="$pkgname-$pkgver-$pkgrel"
-					unset pkgver pkgrel arch epoch
-					if find $REPO/$curarch -maxdepth 1 | grep -q "$packageversion" && [[ -z $full_update ]]
-					then
-						echo "$curarch/$package is already up-to-date. Skipping..." > /dev/null
-					else
-						if [[ -z $full_update ]]
-						then
-							echo "${curarch}/${package} is out of date. Building..."
-						else
-							echo "Building ${curarch}/${package}..."
-						fi
-						cd $tmp/$curarch/$package
-						sed -i '/PKGEXT/d' PKGBUILD
-						yes ""|makepkg -rcfsA --asroot > $tmp/$curarch/$package/makepkg.log 2>&1
-						if [[ $? != 0 ]]; then
-							echo "An error occurred during build... makepkg output will display in 3 seconds"
-							sleep 3
-							cat $tmp/$curarch/$package/makepkg.log
-						else
-							mv $tmp/$curarch/$package/${pkgname}*.pkg* $REPO/$curarch
-						fi
-					fi
-				fi
-			else
-				echo "Unable to find package $package. Skipping..."
-			fi
+			build $tmp $curarch $package
 		done < $REPO/$curarch/$PACKAGES
 	done
 	[[ -d "$tmp" ]] && rm -rf "$tmp"
