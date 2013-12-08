@@ -26,5 +26,5 @@ echo "Building ISO (this may take several minutes)..."
 rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
 
-echo "Updating PXE boot image on bloodwood..."
-ssh bloodwood "/root/update-arch-pxe"
+#echo "Updating PXE boot image on bloodwood..."
+#ssh bloodwood "/root/update-arch-pxe"
