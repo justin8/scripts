@@ -76,7 +76,7 @@ build()
 					sleep 3
 					cat $tmp/$curarch/$package/makepkg.log
 				else
-					mv $tmp/$curarch/$package/${pkgname}*.pkg* $REPO/$curarch
+					cp $tmp/$curarch/$package/${pkgname}*.pkg* $REPO/$curarch
 				fi
 			fi
 		fi
