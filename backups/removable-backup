@@ -19,8 +19,8 @@ cat << EOF > /tmp/$(basename "$0")-server-files-exclusion-list.txt
 .abachi.swap
 downloads
 system/pacman-cache/x86_64/*
-system/pacman-cache/armv7h/*
-system/pacman-cache/armv6h/*
+system/pacman-cache/armv7l/*
+system/pacman-cache/armv6l/*
 XBMC-Thumbnails
 EOF
 
