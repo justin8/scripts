@@ -6,7 +6,7 @@ DATE=`date +%Y-%m-%d`
 DEVICE="/dev/disk/by-label/backup"
 
 #Exclusion list (for shares only):
-cat << EOF > /tmp/shares-exclusion-list.txt
+cat << EOF > /tmp/$(basename "$0")-shares-exclusion-list.txt
 anime
 documentaries
 game-installers/Windows/steamapps
@@ -15,7 +15,7 @@ recordings
 tv
 EOF
 
-cat << EOF > /tmp/server-files-exclusion-list.txt
+cat << EOF > /tmp/$(basename "$0")-server-files-exclusion-list.txt
 .abachi.swap
 downloads
 system/pacman-cache/x86_64/*
