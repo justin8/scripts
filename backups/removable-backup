@@ -66,10 +66,10 @@ if flock -xn 200; then
 	fi
 
 	echo "${DATE} Rsync-ing everything..."
-	rsync -aAXvH --delete --delete-excluded /etc ${BACKUPDIR}
-	rsync -aAXvH --delete --delete-excluded --exclude-from='/tmp/server-files-exclusion-list.txt' /raid/server-files ${BACKUPDIR}
-	rsync -aAXvH --delete --delete-excluded /raid/home ${BACKUPDIR}
-	rsync -aAXvH --delete --delete-excluded --exclude-from='/tmp/shares-exclusion-list.txt' /raid/shares ${BACKUPDIR}
+	rsync -aAXvH --delete-before --delete-excluded /etc ${BACKUPDIR}
+	rsync -aAXvH --delete-before --delete-excluded --exclude-from='/tmp/server-files-exclusion-list.txt' /raid/server-files ${BACKUPDIR}
+	rsync -aAXvH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
+	rsync -aAXvH --delete-before --delete-excluded --exclude-from='/tmp/shares-exclusion-list.txt' /raid/shares ${BACKUPDIR}
 
 	echo "${DATE} Syncing filesystems..."
 	sync
