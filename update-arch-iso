@@ -1,7 +1,6 @@
 #!/bin/bash
 
 BUILDDIR="/srv/repo/iso/archiso"
-XBMCBUILDDIR="/srv/repo/iso/archiso-xbmc"
 OUTPUT="/raid/shares/OSes/x86/Arch"
 SCRIPTS="/raid/server-files/scripts/iso-scripts"
 LOG="/var/log/$(basename $0).log"
