@@ -17,9 +17,9 @@ fi
 
 if echo $0 | grep -q 'cron'
 then
-	exec > ${LOG}
+	exec > ${LOG} 2>&1
 else
-	exec > >(tee ${LOG})
+	exec > >(tee ${LOG}) 2>&1
 fi
 
 

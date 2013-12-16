@@ -63,9 +63,9 @@ LOCK="/run/lock/backup-linux-incremental-$target"
 
 if [[ -z "$quiet" ]]
 then
-	exec > >(tee $LOG)
+	exec > >(tee $LOG) 2>&1
 else
-	exec > $LOG
+	exec > $LOG 2>&1
 fi
 
 exec 200>$LOCK
