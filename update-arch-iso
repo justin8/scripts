@@ -21,7 +21,7 @@ mkdir -p $BUILDDIR/root-image/usr/local/bin
 rm -rf $BUILDDIR/root-image/usr/local/bin/*
 cp -L $SCRIPTS/* $BUILDDIR/root-image/usr/local/bin
 echo "Building ISO (this may take several minutes)..."
-./build.sh -vo $OUTPUT > $LOG 2>&1
+./build.sh -vo $OUTPUT 2>&1 | tee $LOG
 [[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
 
 rm -rf $BUILDDIR/work
