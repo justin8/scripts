@@ -34,6 +34,8 @@ then
 	exit 1
 fi
 
+clock () { echo -n "[`date +%H:%M:%S`] "; }
+
 LOCK=/run/lock/`basename $0`
 exec 200>${LOCK}
 if flock -xn 200; then
@@ -41,39 +43,41 @@ if flock -xn 200; then
 	echo "" > ${LOG}
 	exec > >(tee $LOG) 2>&1
 
-	echo "${DATE} Starting in 5 seconds..."
+	echo "`clock` Starting in 5 seconds..."
 	sleep 5
 
-	echo "${DATE} Mounting backup drive..."
+	echo "`clock` Mounting backup drive..."
 	mount ${DEVICE} ${BACKUPDIR}
 	return=$?
 	if [ ${return} -ne 0 ]
 	then
 		if [ ${return} -eq 32 ]
 		then
-			echo "${DATE} Drive is already mounted. Continuing backup..."
+			echo "`clock` Drive is already mounted. Continuing backup..."
 		else
-			echo "${DATE} Mounting failed; aborting backup"
+			echo "`clock` Mounting failed; aborting backup"
 			exit 1
 		fi
 	fi
 
 	if [ -f /tmp/donotbackup ]
 	then
-		echo "${DATE} Skipping backup due to /tmp/donotbackup existing"
+		echo "`clock` Skipping backup due to /tmp/donotbackup existing"
 		exit 1
 	fi
 
-	echo "${DATE} Rsync-ing everything..."
-	rsync -aAXvH --delete-before --delete-excluded /etc ${BACKUPDIR}
-	rsync -aAXvH --delete-before --delete-excluded --exclude-from='/tmp/server-files-exclusion-list.txt' /raid/server-files ${BACKUPDIR}
-	rsync -aAXvH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
-	rsync -aAXvH --delete-before --delete-excluded --exclude-from='/tmp/shares-exclusion-list.txt' /raid/shares ${BACKUPDIR}
+	echo "`clock` Rsync-ing everything..."
+	echo "`clock` Backing up server-files"
+	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /raid/server-files ${BACKUPDIR}
+	echo "`clock` Backing up home"
+	rsync -aAXH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
+	echo "`clock` Backing up shares"
+	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /raid/shares ${BACKUPDIR}
 
-	echo "${DATE} Syncing filesystems..."
+	echo "`clock` Syncing filesystems..."
 	sync
 
-	echo "${DATE} Backup completed. Unmounting drive and cleaning up..."
+	echo "`clock` Backup completed. Unmounting drive and cleaning up..."
 	while lsof $BACKUPDIR > /dev/null || lsof $DEVICE > /dev/null
 	do
 		sleep 1
