@@ -68,14 +68,20 @@ if flock -xn 200; then
 
 	echo "`clock` Rsync-ing everything..."
 	echo "`clock` Backing up server-files"
-	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /raid/server-files ${BACKUPDIR}
+	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /raid/server-files "${BACKUPDIR}"
 	echo "`clock` Backing up home"
 	rsync -aAXH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
 	echo "`clock` Backing up shares"
-	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /raid/shares ${BACKUPDIR}
+	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /raid/shares "${BACKUPDIR}"
 
 	echo "`clock` Syncing filesystems..."
 	sync
+
+	if command -v btrfs > /dev/null && command -v bedup > /dev/null && [[ $(stat -f -c %T "${BACKUPDIR}") == "btrfs" ]]
+	then
+		echo "`clock` Deduplicating filesystem..."
+		bedup dedup "${BACKUPDIR}"
+	fi
 
 	echo "`clock` Backup completed. Unmounting drive and cleaning up..."
 	while lsof $BACKUPDIR > /dev/null || lsof $DEVICE > /dev/null
