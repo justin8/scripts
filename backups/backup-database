@@ -2,8 +2,8 @@
 BACKUPDIR="/raid/shares/backups/database"
 DATE=`date +%Y-%m-%d`
 LOG=/var/log/backup-database.log
-MUSICDB=MyMusic37
-VIDEOSDB=MyVideos76
+MUSICDB=MyMusic43
+VIDEOSDB=MyVideos77
 DAYSTOKEEPBACKUPS=30
 
 DIR=`dirname $(readlink -f "${0}")`
