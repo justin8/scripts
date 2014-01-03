@@ -1,5 +1,4 @@
 #!/bin/bash
-
 BACKUPDIR="/raid/shares/backups/Full/VMs"
 SOURCEDIR="/raid/virtual-machines"
 EXT="qcow2"
@@ -16,8 +15,6 @@ if [ $# -lt 1 ] ; then
 	echo "USAGE: $(basename $0) VM [VM]"
 	exit 1
 fi
-
-echo "" > ${LOG}
 
 for vm in $@
 do
