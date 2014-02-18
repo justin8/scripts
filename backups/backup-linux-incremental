@@ -139,6 +139,7 @@ EOF
 		--exclude-from=$exclude2 $inc $target:/ "$backup_current"
 	rsync-check $?
 	[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
+	rm -f $exclude2
 
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
