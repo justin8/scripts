@@ -1,0 +1,109 @@
+#!/bin/bash
+#
+# backup-ftb-unleashed - hardlink based rsync incremental backup for ftb-unleashed
+#
+# Cleanup is enabled by having .cleanup file present in the backup location
+#
+
+
+# Static variables
+BACKUPDIR=/raid/shares/backups/misc/ftb-unleashed
+TARGET=/srv/ftb-unleashed-server
+DATE=$(date +%Y-%m-%d_%H.%M)
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+# Functions
+DIR=`dirname $(readlink -f "$0")`
+. $DIR/../lib/check
+
+
+clock () { echo -n "[`date +%H:%M:%S`] "; }
+function rsync-check {
+	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
+	[[ $1 == 24 ]] && echo `clock`"Rsync finished with some ignorable errors (some files vanished before they could be transferred)" && 1=0
+	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+	return $1
+}
+
+function remove-backup {
+	echo `clock`"Clean Up: $1 backup has been detected as over 48 hours old"
+	if [[ -z "$cleanup" ]]
+	then
+		echo `clock`"Clean Up: An error has occurred during cleanup; $1 will NOT be deleted"
+	else
+		if [ -f $cleanup ]
+		then
+			echo `clock`"Clean Up: Clean Up is enabled; Deleting $1"
+			rm -rf $1
+		else
+			echo `clock`"Clean Up: Clean Up is disabled; $1 will NOT be deleted."
+		fi
+	fi
+}
+
+LOG="/var/log/$(basename $0).log"
+LOCK="/run/lock/$(basename $0)"
+
+exec > $LOG 2>&1
+
+exec 200>$LOCK
+if flock -xn 200; then
+	trap "rm $LOCK" SIGINT SIGTERM
+	
+	# Instance variables
+	backup_current="$BACKUPDIR/$DATE"
+	rsyncopts="-aHAX"
+	cleanup=$BACKUPDIR/_cleanup
+	screenname=$(grep FTBUSER=ftb-unleashed /etc/conf.d/ftb-unleashed-server|cut -d'=' -f2)
+
+	if [ -e $backup_current ]
+	then
+		echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
+		exit 0
+	fi
+
+	echo -e "--------| Starting backup at `date +%Y-%m-%d\ %H:%M:%S` |--------"
+
+	echo `clock`"Saving world..."
+	screen -S $screenname -X stuff 'say Backing up world...'
+	sleep 1
+	screen -S $screenname -X stuff 'save-all'
+
+	echo `clock`"Starting backup now..."
+	
+	backup_previous=$(ls -d1 $BACKUPDIR/20* 2>/dev/null| sort -n | tail -1)
+	if [ $backup_previous ]
+	then
+		echo `clock`"Using $backup_previous for hardlinks"
+		inc=--link-dest=$backup_previous
+	else
+		echo `clock`"No previous backup detected in $BACKUPDIR Creating new full backup set"
+		inc=""
+	fi
+
+	rsync $rsyncopts --stats --delete $inc $target "$backup_current"
+	rsync-check $?
+	[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
+
+	echo -n `clock`"Syncing filesystems... "
+	sync; check $?
+
+	if [ -f $cleanup ]
+	then
+		echo `clock`"Clean Up: Starting..."
+		for i in `find $BACKUPDIR/20* -maxdepth 0 -type d -mtime +2`
+		do
+			remove-backup $i
+		done
+		echo `clock`"Clean Up: Completed"
+	else
+		echo `clock`"Clean Up: Disabled; skipping..."
+	fi
+else
+	echo "$DATE Lock file $LOCK present. Aborting"
+fi
