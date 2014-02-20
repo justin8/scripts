@@ -1,13 +1,15 @@
 #!/usr/bin/env python2
 
 from __future__ import print_function
-from socket import inet_aton
 from racktables import client
+from socket import inet_aton
+from tendo import singleton
 import argparse
 import os
 import pysphere
 import re
 
+lock = singleton.SingleInstance()
 
 class DictDiffer(object):
     """
@@ -72,8 +74,7 @@ def get_rt_vm_by_name(rt, name):
 def get_rt_osname(rt, rt_id):
     try:
         return rt.get_object(rt_id, get_attrs=True)['attrs']['SW type']['a_value']
-    except:
-        # TODO: Change this to only catch key errors
+    except KeyError:
         return None
 
 def get_vmw_osname(vm):
@@ -154,7 +155,6 @@ def get_vmw_list(vmwserver):
                                 else:
                                     vmw_list[hostname]['ip_addresses']['eth%s' % eth] = ip
                             except:
-                                #TODO: Make this only catch specific exceptions
                                 pass
 
             vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
@@ -193,7 +193,6 @@ def generate_attrs(rt, vm, vm_props):
     attrs = {
             3: vm
             }
-    # TODO: 4: if get_os_id(rt, vm_props['osname']) then add it. Otherwise do not add the OS if it is not matched
     if vm_props['osname']:
         attrs[4] = get_os_id(rt, vm_props['osname'])
     return attrs
@@ -202,8 +201,11 @@ def add_ip_addresses(rt, rt_id, vm_props):
     for dev, ip in vm_props['ip_addresses'].iteritems():
         try:
             rt.add_object_ipv4_address(rt_id, ip, dev)
-        except:
-            #TODO: Make this only catch specific exceptions
+        except InvalidURL:
+            # This happens when the IP address was added successfully
+            pass
+        except TypeError:
+            # This happens when the IP address already exists on this device, or an invalid IP address is given
             pass
     return None
 
@@ -211,8 +213,8 @@ def remove_racktables_obj(rt, vm, rt_id, vm_props):
     vvprint("Object removal for %s (ID: %s) started. %r" % ( vm, rt_id, vm_props ))
     try:
         rt.delete_object(rt_id)
-    except:
-        #TODO: Make this only catch specific exceptions
+    except InvalidURL:
+        # This happens when an object is deleted or didn't exist in the first place
         pass
     return None
 
@@ -224,8 +226,11 @@ def create_racktables_obj(rt, vm, vm_props):
         # It will also silently fail if the object already exists,
         # allowing for updates of objects with rest of this function
         rt.add_object(vm, object_type_id=1504)
-    except:
-        #TODO: Make this only catch specific exceptions
+    except InvalidURL:
+        # This happens when an object is created successfully
+        pass
+    except TypeError:
+        # This happens when an object already exists, we also want to ignore this
         pass
 
     rt_id = get_rt_vm_by_name(rt, vm)
@@ -233,16 +238,17 @@ def create_racktables_obj(rt, vm, vm_props):
     if rt_id:
         try:
             rt.update_object_tags(rt_id, generate_tags(vm_props))
-        except:
-            #TODO: Make this only catch specific exceptions
-            print("Caught an error while updating the tags for %s (ID %s)" % ( vm, rt_id))
+        except RacktablesClientException:
+            print("The specified tags could not be found. Tags on %s (ID %s) will not be updated" % ( vm, rt_id))
         add_to_cluster(rt, rt_id, vm_props)
         add_ip_addresses(rt, rt_id, vm_props)
         try:
             # This throws exceptions if it is successful or not. :(
-            rt.edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(rt, vm, vm_props))
-        except:
-            #TODO: Make this only catch specific exceptions
+            ret = rt.edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(rt, vm, vm_props))
+            if ret == '':
+                print("An error has occurred while updating the properties for vm %s (ID %s)" % (vm, rt_id))
+        except InvalidURL:
+            # This happens when it is successful
             pass
     else:
         print("An error has occurred while creating %s" % vm)
@@ -260,6 +266,7 @@ vmwserver = connect_vsphere()
 # then do a quick diff on next run to avoid the expensive queries to check each
 # individual machine
 
+
 # Read in list of VMs from Racktables
 vprint("Retrieving Racktables VM list...")
 rt_ids, rt_list = get_racktables_list(rt)
@@ -273,9 +280,7 @@ diff = DictDiffer(vmw_list, rt_list)
 
 vprint("Updating changed objects...")
 for vm in diff.changed():
-# It does not appear to be necessary to delete the object before creating. It silently fails to create, then pushes any updates to the machine.
-#    vvprint("VM %s has changed. Deleting old object in racktables..." % vm)
-#    remove_racktables_obj(rt, vm, rt_ids[vm], vmw_list[vm])
+    # TODO: Skip the object update if vmware reports it offline. Perhaps this should be figured out when creating the vmw list?
     vprint("VM %s has changed. Creating new object in racktables..." % vm)
     vvprint("Racktables entry: %r" % rt_list[vm])
     vvprint("vSphere entry: %r" % vmw_list[vm])
