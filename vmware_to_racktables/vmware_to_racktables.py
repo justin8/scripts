@@ -141,8 +141,7 @@ def get_vmw_list(vmwserver):
     vmw_list = {}
     vmw_paths = {}
 
-    #for cluster in vmwserver.get_clusters().values():
-    for cluster in [ 'SYD2 Prod AMD' ]:
+    for cluster in vmwserver.get_clusters().values():
         vprint("Retrieving VMs from cluster %s..." % cluster)
         for i in vmwserver.get_registered_vms(cluster=cluster):
             # This is the slow bit:
@@ -224,6 +223,9 @@ def replace_ip_addresses(rt, rt_id, vm_props):
         except InvalidURL:
             # This happens when the IP address was deleted successfully
             pass
+        except ValueError:
+            # This happens (occasionally) when an IP address is deleted. It is still probably successful
+            pass
 
     for dev, ip in vm_props['ip_addresses'].iteritems():
         try:
@@ -233,6 +235,9 @@ def replace_ip_addresses(rt, rt_id, vm_props):
             pass
         except TypeError:
             # This happens when the IP address already exists on this device, or an invalid IP address is given
+            pass
+        except ValueError:
+            # This happens (occasionally) when an IP address is added. It is still probably successful
             pass
     return None
 
@@ -252,6 +257,9 @@ def create_racktables_obj(rt, vm, vm_props):
         rt.add_object(vm, object_type_id=1504)
     except InvalidURL:
         # This happens when an object is created successfully
+        pass
+    except ValueError:
+        # This happens (occasionally) when an object is created (still successfully)
         pass
     except TypeError:
         # This happens when an object already exists, we also want to ignore this
