@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 from __future__ import print_function
+from httplib import InvalidURL
 from racktables import client
 from socket import inet_aton
 from sys import exit
@@ -76,6 +77,12 @@ def get_rt_details(rt, rt_id):
     details = rt.get_object(rt_id, get_attrs=True)
     return ( details['attrs'], details['ipv4'] )
 
+def get_rt_cores(rt, attrs):
+    try:
+        return attrs['CPU cores, No.']['a_value']
+    except KeyError:
+        return None
+
 def get_rt_osname(rt, attrs):
     try:
         return attrs['SW type']['a_value']
@@ -120,6 +127,7 @@ def get_racktables_list(rt):
         rt_list[hostname] = {
                 'clustername': rt_objs[i]['container_name'],
                 'osname': get_rt_osname(rt, attrs),
+                'cores': get_rt_cores(rt, attrs),
                 'ip_addresses': {}
                 }
 
@@ -131,6 +139,7 @@ def get_racktables_list(rt):
 
 def get_vmw_list(vmwserver):
     vmw_list = {}
+    vmw_paths = {}
 
     #for cluster in vmwserver.get_clusters().values():
     for cluster in [ 'SYD2 Prod AMD' ]:
@@ -141,9 +150,11 @@ def get_vmw_list(vmwserver):
             hostname = cur_vm.get_property('hostname')
             if not hostname:
                 hostname = cur_vm.get_property('name')
+            vmw_paths[hostname] = i
             vmw_list[hostname] = {
                     'clustername': cluster,
                     'osname': get_vmw_osname(cur_vm),
+                    'cores': str(cur_vm.get_property('num_cpu')),
                     'ip_addresses': {}
                     }
             networks = cur_vm.get_property('net')
@@ -164,7 +175,7 @@ def get_vmw_list(vmwserver):
 
             vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
         vvprint("\n")
-    return vmw_list
+    return ( vmw_list, vmw_paths )
 
 def get_cluster_id(rt, clustername):
     clusters = rt.get_objects(type_filter=1505)
@@ -196,13 +207,24 @@ def generate_attrs(rt, vm, vm_props):
     #  10018: CPU cores, No
 
     attrs = {
-            3: vm
+            3: vm,
+            10018: vm_props['cores']
             }
     if vm_props['osname']:
         attrs[4] = get_os_id(rt, vm_props['osname'])
     return attrs
 
-def add_ip_addresses(rt, rt_id, vm_props):
+def replace_ip_addresses(rt, rt_id, vm_props):
+    #Remove current IPs first
+    old_rt_ips = rt.get_object(rt_id)['ipv4']
+    for rec in old_rt_ips:
+        ip = old_rt_ips[rec]['addrinfo']['ip']
+        try:
+            rt.delete_object_ipv4_address(rt_id, ip)
+        except InvalidURL:
+            # This happens when the IP address was deleted successfully
+            pass
+
     for dev, ip in vm_props['ip_addresses'].iteritems():
         try:
             rt.add_object_ipv4_address(rt_id, ip, dev)
@@ -227,9 +249,6 @@ def create_racktables_obj(rt, vm, vm_props):
     vvprint("Object creation for %s started. %r" % ( vm, vm_props ))
 
     try:
-        # This throws exceptions if it is successful or not. :(
-        # It will also silently fail if the object already exists,
-        # allowing for updates of objects with rest of this function
         rt.add_object(vm, object_type_id=1504)
     except InvalidURL:
         # This happens when an object is created successfully
@@ -246,14 +265,16 @@ def create_racktables_obj(rt, vm, vm_props):
         except RacktablesClientException:
             print("The specified tags could not be found. Tags on %s (ID %s) will not be updated" % ( vm, rt_id))
         add_to_cluster(rt, rt_id, vm_props)
-        add_ip_addresses(rt, rt_id, vm_props)
+        replace_ip_addresses(rt, rt_id, vm_props)
         try:
-            # This throws exceptions if it is successful or not. :(
             ret = rt.edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(rt, vm, vm_props))
             if ret == '':
                 print("An error has occurred while updating the properties for vm %s (ID %s)" % (vm, rt_id))
         except InvalidURL:
             # This happens when it is successful
+            pass
+        except ValueError:
+            # This sometimes also happens, but appears to always be successful anyway.
             pass
     else:
         print("An error has occurred while creating %s" % vm)
@@ -275,8 +296,8 @@ def simple_check(vmwserver):
         json.dump(new_list, f, indent=2)
     return False
 
-def vm_powered_on(vmwserver, vmname):
-    vm = vmwserver.get_vm_by_name(vmname)
+def vm_powered_on(vmwserver, vm_path):
+    vm = vmwserver.get_vm_by_path(vm_path)
     return vm.is_powered_on()
 
 parser = argparse.ArgumentParser()
@@ -299,14 +320,14 @@ rt_ids, rt_list = get_racktables_list(rt)
 # Read in list of VMs from VMWare
 vvprint("\n")
 vprint("Retrieving VMWare VM list...")
-vmw_list = get_vmw_list(vmwserver)
+vmw_list, vmw_paths = get_vmw_list(vmwserver)
 
 # Find differences between the data recorded in Racktables compared to VMWare's
 diff = DictDiffer(vmw_list, rt_list)
 
 vprint("Updating changed objects...")
 for vm in diff.changed():
-    if vm_powered_on(vmwserver, vm):
+    if vm_powered_on(vmwserver, vmw_paths[vm]):
         vprint("VM %s has changed. Creating new object in racktables..." % vm)
         vvprint("Racktables entry: %r" % rt_list[vm])
         vvprint("vSphere entry: %r" % vmw_list[vm])
