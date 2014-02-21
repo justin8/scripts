@@ -3,8 +3,10 @@
 from __future__ import print_function
 from racktables import client
 from socket import inet_aton
+from sys import exit
 from tendo import singleton
 import argparse
+import json
 import os
 import pysphere
 import re
@@ -41,7 +43,6 @@ def vvprint(message):
         print(message)
 
 def read_password_file(pw_file):
-    import json
     passwords = {}
     with open(pw_file) as f:
         passwords=json.load(f)
@@ -254,18 +255,34 @@ def create_racktables_obj(rt, vm, vm_props):
         print("An error has occurred while creating %s" % vm)
     return None
 
+def simple_check(vmwserver):
+    # Get current machine list
+    outfile = '/tmp/.vmware-to-racktables-list'
+    new_list = vmwserver.get_registered_vms()
+    # Check if file already exists
+    if os.path.isfile(outfile):
+        # Load file
+        with open(outfile) as f:
+            # Compare against current list
+            old_list = json.load(f)
+        if new_list == old_list:
+            return True
+    with open(outfile, 'w') as f:
+        json.dump(new_list, f, indent=2)
+    return False
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', help='Increase verbosity of output', action='count')
+parser.add_argument('-s', '--simple', help='Only perform a quick check for new VMs, and not changed/deleted VMs', action='store_true')
 args = parser.parse_args()
 
 passwords = read_password_file(os.getenv('HOME')+'/.vmwrtpw')
 rt = connect_racktables()
 vmwserver = connect_vsphere()
 
-# TODO: Save out racktables global object list for VMs and vSphere's vm list
-# then do a quick diff on next run to avoid the expensive queries to check each
-# individual machine
-
+if args.simple:
+    if simple_check(vmwserver):
+        exit(0)
 
 # Read in list of VMs from Racktables
 vprint("Retrieving Racktables VM list...")
