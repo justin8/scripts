@@ -271,6 +271,10 @@ def simple_check(vmwserver):
         json.dump(new_list, f, indent=2)
     return False
 
+def vm_powered_on(vmwserver, vmname):
+    vm = vmwserver.get_vm_by_name(vmname)
+    return vm.is_powered_on()
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', help='Increase verbosity of output', action='count')
 parser.add_argument('-s', '--simple', help='Only perform a quick check for new VMs, and not changed/deleted VMs', action='store_true')
@@ -297,11 +301,11 @@ diff = DictDiffer(vmw_list, rt_list)
 
 vprint("Updating changed objects...")
 for vm in diff.changed():
-    # TODO: Skip the object update if vmware reports it offline. Perhaps this should be figured out when creating the vmw list?
-    vprint("VM %s has changed. Creating new object in racktables..." % vm)
-    vvprint("Racktables entry: %r" % rt_list[vm])
-    vvprint("vSphere entry: %r" % vmw_list[vm])
-    create_racktables_obj(rt, vm, vmw_list[vm])
+    if vm_powered_on(vmwserver, vm):
+        vprint("VM %s has changed. Creating new object in racktables..." % vm)
+        vvprint("Racktables entry: %r" % rt_list[vm])
+        vvprint("vSphere entry: %r" % vmw_list[vm])
+        create_racktables_obj(rt, vm, vmw_list[vm])
 
 vprint("\nAdding new objects...")
 for vm in diff.added():
