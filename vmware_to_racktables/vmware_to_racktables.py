@@ -159,7 +159,7 @@ def get_vmw_list(vmwserver):
                                 pass
 
             vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
-        vprint("\n")
+        vvprint("\n")
     return vmw_list
 
 def get_cluster_id(rt, clustername):
@@ -293,7 +293,8 @@ vprint("Retrieving Racktables VM list...")
 rt_ids, rt_list = get_racktables_list(rt)
 
 # Read in list of VMs from VMWare
-vprint("\nRetrieving VMWare VM list...")
+vvprint("\n")
+vprint("Retrieving VMWare VM list...")
 vmw_list = get_vmw_list(vmwserver)
 
 # Find differences between the data recorded in Racktables compared to VMWare's
@@ -307,12 +308,14 @@ for vm in diff.changed():
         vvprint("vSphere entry: %r" % vmw_list[vm])
         create_racktables_obj(rt, vm, vmw_list[vm])
 
-vprint("\nAdding new objects...")
+vvprint("\n")
+vprint("Adding new objects...")
 for vm in diff.added():
     vprint("VM %s has been added. Creating object in racktables..." % vm)
     create_racktables_obj(rt, vm, vmw_list[vm])
 
-vprint("\nDeleting old objects...")
+vvprint("\n")
+vprint("Deleting old objects...")
 for vm in diff.removed():
     vprint("VM %s has been removed. Deleting object in racktables..." % vm)
     remove_racktables_obj(rt, vm, rt_ids[vm], rt_list[vm])
