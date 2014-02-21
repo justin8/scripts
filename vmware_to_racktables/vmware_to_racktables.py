@@ -72,9 +72,13 @@ def get_rt_vm_by_name(rt, name):
             return vm
     return None
 
-def get_rt_osname(rt, rt_id):
+def get_rt_details(rt, rt_id):
+    details = rt.get_object(rt_id, get_attrs=True)
+    return ( details['attrs'], details['ipv4'] )
+
+def get_rt_osname(rt, attrs):
     try:
-        return rt.get_object(rt_id, get_attrs=True)['attrs']['SW type']['a_value']
+        return attrs['SW type']['a_value']
     except KeyError:
         return None
 
@@ -111,14 +115,14 @@ def get_racktables_list(rt):
     for i in rt_objs:
         hostname = rt_objs[i]['name']
         rt_ids[hostname] = i
+        attrs, networks = get_rt_details(rt, i)
         vvprint("Name: %s\nID: %s\n" % ( hostname, i ))
         rt_list[hostname] = {
                 'clustername': rt_objs[i]['container_name'],
-                'osname': get_rt_osname(rt, i),
+                'osname': get_rt_osname(rt, attrs),
                 'ip_addresses': {}
                 }
 
-        networks = rt.get_object(i)['ipv4']
         for net in networks:
             rt_list[hostname]['ip_addresses'][networks[net]['osif']] = networks[net]['addrinfo']['ip']
         vvprint("Retrieved racktables VM record for %s: %r" % ( hostname, rt_list[hostname] ))
