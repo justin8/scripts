@@ -91,7 +91,7 @@ def get_rt_osname(rt, attrs):
 
 def get_vmw_osname(vm):
     os_translations = {
-            'win2000AdvServGuest': 'Windows  2000',
+            'win2000AdvServGuest': 'Windows 2000',
             'winXPProGuest': 'Windows XP',
             'winNetStandard64Guest': 'Windows 2003',
             'winNetStandardGuest': 'Windows 2003',
