@@ -49,11 +49,11 @@ def read_password_file(pw_file):
         passwords=json.load(f)
     return passwords
 
-def connect_racktables():
+def connect_racktables(passwords):
     rt = client.RacktablesClient('http://racktables.wotifgroup.com/api.php', passwords['rtusername'], passwords['rtpassword'])
     return rt
 
-def connect_vsphere():
+def connect_vsphere(passwords):
     vmwserver = pysphere.VIServer()
     vmwserver.connect("vcenter.core.wotifgroup.com", passwords['vmwusername'], passwords['vmwpassword'])
     return vmwserver
@@ -113,6 +113,7 @@ def get_vmw_osname(vm):
         return os_translations[os_id]
     else:
         return None
+
 
 def get_racktables_list(rt):
     rt_objs = rt.get_objects(type_filter=1504)
@@ -185,9 +186,9 @@ def get_cluster_id(rt, clustername):
 
 def get_os_id(rt, osname):
     oses = rt.get_chapter(13)
-    for os in oses:
-        if oses[os] == osname:
-            return os
+    for o in oses:
+        if oses[o] == osname:
+            return o
     return None
 
 def add_to_cluster(rt, rt_id, vm_props):
@@ -195,7 +196,7 @@ def add_to_cluster(rt, rt_id, vm_props):
     # link_entities function returns {} for a 'success' and '' if the objects
     # were already linked. It does allow you to link to non-existant IDs,
     # which will break the child object in the web UI
-    rt.link_entities(rt_id, clusterid) 
+    rt.link_entities(rt_id, clusterid)
     return None
 
 def generate_attrs(rt, vm, vm_props):
@@ -206,9 +207,9 @@ def generate_attrs(rt, vm, vm_props):
     #  10018: CPU cores, No
 
     attrs = {
-            3: vm,
-            10018: vm_props['cores']
-            }
+        3: vm,
+        10018: vm_props['cores']
+    }
     if vm_props['osname']:
         attrs[4] = get_os_id(rt, vm_props['osname'])
     return attrs
@@ -270,7 +271,7 @@ def create_racktables_obj(rt, vm, vm_props):
     if rt_id:
         try:
             rt.update_object_tags(rt_id, generate_tags(vm_props))
-        except RacktablesClientException:
+        except client.RacktablesClientException:
             print("The specified tags could not be found. Tags on %s (ID %s) will not be updated" % ( vm, rt_id))
         add_to_cluster(rt, rt_id, vm_props)
         replace_ip_addresses(rt, rt_id, vm_props)
@@ -287,6 +288,7 @@ def create_racktables_obj(rt, vm, vm_props):
     else:
         print("An error has occurred while creating %s" % vm)
     return None
+
 
 def simple_check(vmwserver):
     # Get current machine list
@@ -308,47 +310,53 @@ def vm_powered_on(vmwserver, vm_path):
     vm = vmwserver.get_vm_by_path(vm_path)
     return vm.is_powered_on()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-v', '--verbose', help='Increase verbosity of output', action='count')
-parser.add_argument('-s', '--simple', help='Only perform a quick check for new VMs, and not changed/deleted VMs', action='store_true')
-args = parser.parse_args()
 
-passwords = read_password_file(os.getenv('HOME')+'/.vmwrtpw')
-rt = connect_racktables()
-vmwserver = connect_vsphere()
 
-if args.simple:
-    if simple_check(vmwserver):
-        exit(0)
+def main(args):
+    passwords = read_password_file(os.getenv('HOME') + '/.vmwrtpw')
+    rt = connect_racktables(passwords)
+    vmwserver = connect_vsphere(passwords)
 
-# Read in list of VMs from Racktables
-vprint("Retrieving Racktables VM list...")
-rt_ids, rt_list = get_racktables_list(rt)
+    if args.simple:
+        if simple_check(vmwserver):
+            exit(0)
 
-# Read in list of VMs from VMWare
-vvprint("\n")
-vprint("Retrieving VMWare VM list...")
-vmw_list, vmw_paths = get_vmw_list(vmwserver)
+    # Read in list of VMs from Racktables
+    vprint("Retrieving Racktables VM list...")
+    rt_ids, rt_list = get_racktables_list(rt)
 
-# Find differences between the data recorded in Racktables compared to VMWare's
-diff = DictDiffer(vmw_list, rt_list)
+    # Read in list of VMs from VMWare
+    vvprint("\n")
+    vprint("Retrieving VMWare VM list...")
+    vmw_list, vmw_paths = get_vmw_list(vmwserver)
 
-vprint("Updating changed objects...")
-for vm in diff.changed():
-    if vm_powered_on(vmwserver, vmw_paths[vm]):
-        vprint("VM %s has changed. Creating new object in racktables..." % vm)
-        vvprint("Racktables entry: %r" % rt_list[vm])
-        vvprint("vSphere entry: %r" % vmw_list[vm])
+    # Find differences between the data recorded in Racktables compared to VMWare's
+    diff = DictDiffer(vmw_list, rt_list)
+
+    vprint("Updating changed objects...")
+    for vm in diff.changed():
+        if vm_powered_on(vmwserver, vmw_paths[vm]):
+            vprint("VM %s has changed. Creating new object in racktables..." % vm)
+            vvprint("Racktables entry: %r" % rt_list[vm])
+            vvprint("vSphere entry: %r" % vmw_list[vm])
+            create_racktables_obj(rt, vm, vmw_list[vm])
+
+    vvprint("\n")
+    vprint("Adding new objects...")
+    for vm in diff.added():
+        vprint("VM %s has been added. Creating object in racktables..." % vm)
         create_racktables_obj(rt, vm, vmw_list[vm])
 
-vvprint("\n")
-vprint("Adding new objects...")
-for vm in diff.added():
-    vprint("VM %s has been added. Creating object in racktables..." % vm)
-    create_racktables_obj(rt, vm, vmw_list[vm])
+    vvprint("\n")
+    vprint("Deleting old objects...")
+    for vm in diff.removed():
+        vprint("VM %s has been removed. Deleting object in racktables..." % vm)
+        remove_racktables_obj(rt, vm, rt_ids[vm], rt_list[vm])
 
-vvprint("\n")
-vprint("Deleting old objects...")
-for vm in diff.removed():
-    vprint("VM %s has been removed. Deleting object in racktables..." % vm)
-    remove_racktables_obj(rt, vm, rt_ids[vm], rt_list[vm])
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', help='Increase verbosity of output', action='count')
+    parser.add_argument('-s', '--simple', help='Only perform a quick check for new VMs, and not changed/deleted VMs', action='store_true')
+    args = parser.parse_args()
+    main(args)
