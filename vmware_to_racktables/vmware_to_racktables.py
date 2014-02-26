@@ -138,44 +138,49 @@ def get_racktables_list(rt):
 
     return ( rt_ids, rt_list )
 
-def get_vmw_list(vmwserver):
+def get_vmw_list(vmwserver, cluster_map):
     vmw_list = {}
     vmw_paths = {}
 
-    for cluster in vmwserver.get_clusters().values():
-        vprint("Retrieving VMs from cluster %s..." % cluster)
-        for i in vmwserver.get_registered_vms(cluster=cluster):
-            # This is the slow bit:
-            cur_vm = vmwserver.get_vm_by_path(i)
-            hostname = cur_vm.get_property('hostname')
-            if not hostname:
-                hostname = cur_vm.get_property('name')
-            vmw_paths[hostname] = i
-            vmw_list[hostname] = {
-                    'clustername': cluster,
-                    'osname': get_vmw_osname(cur_vm),
-                    'cores': str(cur_vm.get_property('num_cpu')),
-                    'ip_addresses': {}
-                    }
-            networks = cur_vm.get_property('net')
-            if networks:
-                for eth, net in enumerate(networks):
-                    # We only care about mac addresses that are mapped
-                    # to vmnics; not dummy networks. Looking at you app5!
-                    if net['network']:
-                        for num, ip in enumerate(net['ip_addresses']):
-                            try:
-                                inet_aton(ip)
-                                if 'eth%s' % eth in vmw_list[hostname]['ip_addresses']:
-                                    vmw_list[hostname]['ip_addresses']['eth%s:%s' % ( eth, num )] = ip
-                                else:
-                                    vmw_list[hostname]['ip_addresses']['eth%s' % eth] = ip
-                            except:
-                                pass
+    for i in vmwserver.get_registered_vms():
+        # This is the slow bit:
+        cur_vm = vmwserver.get_vm_by_path(i)
+        hostname = cur_vm.get_property('hostname')
+        if not hostname:
+            hostname = cur_vm.get_property('name')
+        vmw_paths[hostname] = i
+        vmw_list[hostname] = {
+                'clustername': cluster_map.get(i, ''),
+                'osname': get_vmw_osname(cur_vm),
+                'cores': str(cur_vm.get_property('num_cpu')),
+                'ip_addresses': {}
+                }
+        networks = cur_vm.get_property('net')
+        if networks:
+            for eth, net in enumerate(networks):
+                # We only care about mac addresses that are mapped
+                # to vmnics; not dummy networks. Looking at you app5!
+                if net['network']:
+                    for num, ip in enumerate(net['ip_addresses']):
+                        try:
+                            inet_aton(ip)
+                            if 'eth%s' % eth in vmw_list[hostname]['ip_addresses']:
+                                vmw_list[hostname]['ip_addresses']['eth%s:%s' % ( eth, num )] = ip
+                            else:
+                                vmw_list[hostname]['ip_addresses']['eth%s' % eth] = ip
+                        except:
+                            pass
 
-            vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
-        vvprint("\n")
+        vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
     return ( vmw_list, vmw_paths )
+
+def get_vmw_cluster_map(vmwserver):
+    cluster_map = {}
+    for cluster in vmwserver.get_clusters().values():
+        vprint("Generating cluster map for cluster %s..." % cluster)
+        for i in vmwserver.get_registered_vms(cluster=cluster):
+            cluster_map[i] = cluster
+    return cluster_map
 
 def get_cluster_id(rt, clustername):
     clusters = rt.get_objects(type_filter=1505)
@@ -306,10 +311,10 @@ def simple_check(vmwserver):
         json.dump(new_list, f, indent=2)
     return False
 
+
 def vm_powered_on(vmwserver, vm_path):
     vm = vmwserver.get_vm_by_path(vm_path)
     return vm.is_powered_on()
-
 
 
 def main(args):
@@ -327,8 +332,7 @@ def main(args):
 
     # Read in list of VMs from VMWare
     vvprint("\n")
-    vprint("Retrieving VMWare VM list...")
-    vmw_list, vmw_paths = get_vmw_list(vmwserver)
+    vmw_list, vmw_paths = get_vmw_list(vmwserver, get_vmw_cluster_map(vmwserver))
 
     # Find differences between the data recorded in Racktables compared to VMWare's
     diff = DictDiffer(vmw_list, rt_list)
