@@ -105,6 +105,7 @@ def get_vmw_osname(vm):
             'debian6Guest': 'Debian 6.0 (squeeze)',
             'rhel3Guest': 'RHEL V3',
             'rhel4Guest': 'RHEL V4',
+            'rhel5_Guest': 'RHEL V5',
             'rhel5_64Guest': 'RHEL V5',
             'rhel6_64Guest': 'RHEL V6'
             }
