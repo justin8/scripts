@@ -1,0 +1,5 @@
+#!/bin/bash
+messagelist=$(curl -Ss http://www.commitlogsfromlastnight.com/ | grep commit | grep -oE ">.*<" | sed 's/[<>]//g')
+linecount=$(echo "$messagelist" | wc -l)
+choice=$(shuf -i 1-$linecount -n 1)
+git commit -m "$(echo "$messagelist" | sed -n ${choice}p)"
