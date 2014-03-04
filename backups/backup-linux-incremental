@@ -116,6 +116,8 @@ if flock -xn 200; then
 /proc/*
 /run/*
 /sys/*
+/tmp/*
+/var/tmp/*
 lost+found
 /var/cache/pacman/pkg/*
 /var/lib/mlocate/mlocate.db
