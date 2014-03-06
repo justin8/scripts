@@ -8,6 +8,7 @@ DEVICE="/dev/disk/by-label/backup"
 #Exclusion list (for shares only):
 cat << EOF > /tmp/$(basename "$0")-shares-exclusion-list.txt
 anime
+backups/Incremental/*
 documentaries
 game-installers/Windows/steamapps
 movies
@@ -17,6 +18,8 @@ EOF
 cat << EOF > /tmp/$(basename "$0")-server-files-exclusion-list.txt
 .abachi.swap
 downloads
+system/chroot
+system/var/lib/jenkins/aur-mirror
 XBMC-Thumbnails
 EOF
 
@@ -70,6 +73,8 @@ if flock -xn 200; then
 	rsync -aAXH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
 	echo "`clock` Backing up shares"
 	rsync -aAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /raid/shares "${BACKUPDIR}"
+	echo "`clock` Backing up latest abachi backup"
+	rsync -aAXH --delete-before $(ls -d1 /raid/shares/backups/Incremental/abachi/20* | tail -n 1) "${BACKUPDIR}/abachi"
 
 	echo "`clock` Syncing filesystems..."
 	sync
