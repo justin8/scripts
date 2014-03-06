@@ -59,7 +59,7 @@ if flock -xn 200; then
 	backup_current="$BACKUPDIR/$DATE"
 	rsyncopts="-aHAX"
 	cleanup=$BACKUPDIR/_cleanup
-	screenname=$(grep FTBUSER=ftb-unleashed /etc/conf.d/ftb-unleashed-server|cut -d'=' -f2)
+	screenname=$(grep FTBUSER=ftb-unleashed /etc/conf.d/ftb-unleashed|cut -d'=' -f2)
 
 	if [ -e $backup_current ]
 	then
