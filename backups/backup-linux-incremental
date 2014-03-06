@@ -23,9 +23,17 @@ DIR=`dirname $(readlink -f "$0")`
 
 clock () { echo -n "[`date +%H:%M:%S`] "; }
 function rsync-check {
-	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
-	[[ $1 == 24 ]] && echo `clock`"Rsync finished with some ignorable errors (some files vanished before they could be transferred)" && 1=0
-	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+	case $1 in
+		0)
+			echo `clock`"Rsync finished Successfully"
+			;;
+		24)
+			echo `clock`"Rsync finished with some ignorable errors (some files vanished before they could be transferred)"
+			;;
+		*)
+			echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+			;;
+	esac
 	return $1
 }
 
