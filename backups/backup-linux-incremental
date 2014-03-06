@@ -190,17 +190,12 @@ EOF
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
 
-	if [ -f $cleanup ]
-	then
-		echo `clock`"Clean Up: Starting..."
-		for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
-		do
-			remove-backup $i
-		done
-		echo `clock`"Clean Up: Completed"
-	else
-		echo `clock`"Clean Up: Disabled; skipping..."
-	fi
+	echo `clock`"Clean Up: Starting..."
+	for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
+	do
+		remove-backup $i
+	done
+	echo `clock`"Clean Up: Completed"
 else
 	echo "$DATE Lock file $LOCK present. Aborting"
 fi
