@@ -167,9 +167,10 @@ EOF
 		--exclude-from=$custom_exclusions \
 		--exclude-from=$default_exclusions \
 		$inc $target:/ "$backup_current"
-	rsync-check $?
+	rc=$?
+	rsync-check $rc
 
-	if [[ $? != 0 ]]; then
+	if [[ $rc != 0 ]] && [[ $rc == 24 ]]; then
 	       rsyncfailed=true
 	else
 	       touch "$backup_current"
