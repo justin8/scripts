@@ -96,7 +96,7 @@ if flock -xn 200; then
 	sync; check $?
 
 	echo `clock`"Clean Up: Starting..."
-	find $BACKUPDIR/20* -maxdepth 0 -type d -mtime +2 -delete
+	find $BACKUPDIR/20* -maxdepth 0 -type d -mtime +2 -exec rm -rf {} \;
 	echo `clock`"Clean Up: Completed"
 else
 	echo "$DATE Lock file $LOCK present. Aborting"
