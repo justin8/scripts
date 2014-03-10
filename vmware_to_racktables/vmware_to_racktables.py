@@ -79,15 +79,15 @@ def generate_tags(vm_props):
         tags.append('Global Switch')
     return tags
 
-def get_rt_vm_by_name(rt, name):
-    rt_objs = rt.get_objects(type_filter=1504)
+def get_rt_vm_by_name(name):
+    rt_objs = racktables().get_objects(type_filter=1504)
     for vm in rt_objs:
         if rt_objs[vm]['name'] == name:
             return vm
     return None
 
-def get_rt_details(rt, rt_id):
-    details = rt.get_object(rt_id, get_attrs=True)
+def get_rt_details(rt_id):
+    details = racktables().get_object(rt_id, get_attrs=True)
     return ( details['attrs'], details['ipv4'] )
 
 def get_rt_attr(attrs, name):
@@ -127,15 +127,15 @@ def get_vmw_datastore(vm):
     datastore = re.search('\[(.*?)\]', path)
     return datastore.groups()[0]
 
-def get_racktables_list(rt):
-    rt_objs = rt.get_objects(type_filter=1504)
+def get_racktables_list():
+    rt_objs = racktables().get_objects(type_filter=1504)
     rt_ids = {}
     rt_list = {}
 
     for i in rt_objs:
         hostname = rt_objs[i]['name']
         rt_ids[hostname] = i
-        attrs, networks = get_rt_details(rt, i)
+        attrs, networks = get_rt_details(i)
         vvprint("Name: %s\nID: %s\n" % ( hostname, i ))
         rt_list[hostname] = {
                 'clustername': rt_objs[i]['container_name'],
@@ -151,19 +151,19 @@ def get_racktables_list(rt):
 
     return ( rt_ids, rt_list )
 
-def get_vmw_list(vmwserver, cluster_map):
+def get_vmw_list():
     vmw_list = {}
     vmw_paths = {}
 
-    for i in vmwserver.get_registered_vms():
+    for i in vsphere().get_registered_vms():
         # This is the slow bit:
-        cur_vm = vmwserver.get_vm_by_path(i)
+        cur_vm = vsphere().get_vm_by_path(i)
         hostname = cur_vm.get_property('hostname')
         if not hostname:
             hostname = cur_vm.get_property('name')
         vmw_paths[hostname] = i
         vmw_list[hostname] = {
-                'clustername': cluster_map.get(i, ''),
+                'clustername': get_vmw_cluster(i),
                 'osname': get_vmw_osname(cur_vm),
                 'cores': str(cur_vm.get_property('num_cpu')),
                 'datastore': get_vmw_datastore(cur_vm),
@@ -188,19 +188,24 @@ def get_vmw_list(vmwserver, cluster_map):
         vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
     return ( vmw_list, vmw_paths )
 
-def get_vmw_cluster_map(vmwserver):
-    cluster_map = {}
-    for cluster in vmwserver.get_clusters().values():
-        vprint("Generating cluster map for cluster %s..." % cluster)
-        for i in vmwserver.get_registered_vms(cluster=cluster):
-            cluster_map[i] = cluster
-    return cluster_map
+def get_vmw_cluster(vmpath):
+    if not hasattr(get_vmw_cluster, 'cluster_map'):
+        vprint("Initializing cluster maps...")
+        get_vmw_cluster.cluster_map = {}
+        for cluster in vsphere().get_clusters().values():
+            vvprint("    Generating cluster map for cluster %s..." % cluster)
+            for i in vsphere().get_registered_vms(cluster=cluster):
+                get_vmw_cluster.cluster_map[i] = cluster
+    try:
+        return get_vmw_cluster.cluster_map[vmpath]
+    except KeyError:
+        return ''
 
-def get_cluster_id(rt, clustername):
+def get_cluster_id(clustername):
     if not hasattr(get_cluster_id, 'cluster_map'):
         vprint("Initializing cluster ID map...")
         get_cluster_id.cluster_map = {}
-        clusters = rt.get_objects(type_filter=1505)
+        clusters = racktables().get_objects(type_filter=1505)
         for cluster in clusters:
             get_cluster_id.cluster_map[clusters[cluster]['name']] = cluster
     try:
@@ -208,24 +213,24 @@ def get_cluster_id(rt, clustername):
     except KeyError:
         return None
 
-def get_os_id(rt, osname):
+def get_os_id(osname):
     if not hasattr(get_os_id, 'os_map'):
         vprint("Initializing OS ID map...")
-        get_os_id.os_map = { v:k for k, v in rt.get_chapter(13).items() }
+        get_os_id.os_map = { v:k for k, v in racktables().get_chapter(13).items() }
     try:
         return get_os_id.os_map[osname]
     except KeyError:
         return None
 
-def add_to_cluster(rt, rt_id, vm_props):
-    clusterid = get_cluster_id(rt, vm_props['clustername'])
+def add_to_cluster(rt_id, vm_props):
+    clusterid = get_cluster_id(vm_props['clustername'])
     # link_entities function returns {} for a 'success' and '' if the objects
-    # were already linked. It does allow you to link to non-existant IDs,
+    # were already linked. It DOES allow you to link to non-existant IDs,
     # which will break the child object in the web UI
-    rt.link_entities(rt_id, clusterid)
+    racktables().link_entities(rt_id, clusterid)
     return None
 
-def generate_attrs(rt, vm, vm_props):
+def generate_attrs(vm, vm_props):
     # Attr IDs:
     #      3: FQDN
     #      4: OS Type
@@ -238,16 +243,16 @@ def generate_attrs(rt, vm, vm_props):
         10022: vm_props['datastore']
     }
     if vm_props['osname']:
-        attrs[4] = get_os_id(rt, vm_props['osname'])
+        attrs[4] = get_os_id(vm_props['osname'])
     return attrs
 
-def replace_ip_addresses(rt, rt_id, vm_props):
+def replace_ip_addresses(rt_id, vm_props):
     #Remove current IPs first
-    old_rt_ips = rt.get_object(rt_id)['ipv4']
+    old_rt_ips = racktables().get_object(rt_id)['ipv4']
     for rec in old_rt_ips:
         ip = old_rt_ips[rec]['addrinfo']['ip']
         try:
-            rt.delete_object_ipv4_address(rt_id, ip)
+            racktables().delete_object_ipv4_address(rt_id, ip)
         except InvalidURL:
             # This happens when the IP address was deleted successfully
             pass
@@ -257,7 +262,7 @@ def replace_ip_addresses(rt, rt_id, vm_props):
 
     for dev, ip in vm_props['ip_addresses'].iteritems():
         try:
-            rt.add_object_ipv4_address(rt_id, ip, dev)
+            racktables().add_object_ipv4_address(rt_id, ip, dev)
         except InvalidURL:
             # This happens when the IP address was added successfully
             pass
@@ -269,10 +274,10 @@ def replace_ip_addresses(rt, rt_id, vm_props):
             pass
     return None
 
-def remove_racktables_obj(rt, vm, rt_id, vm_props):
+def remove_racktables_obj(vm, rt_id, vm_props):
     vvprint("Object removal for %s (ID: %s) started. %r" % ( vm, rt_id, vm_props ))
     try:
-        rt.delete_object(rt_id)
+        racktables().delete_object(rt_id)
     except InvalidURL:
         # This happens when an object is deleted or didn't exist in the first place
         pass
@@ -281,11 +286,11 @@ def remove_racktables_obj(rt, vm, rt_id, vm_props):
         pass
     return None
 
-def create_racktables_obj(rt, vm, vm_props):
+def create_racktables_obj(vm, vm_props):
     vvprint("Object creation for %s started. %r" % ( vm, vm_props ))
 
     try:
-        rt.add_object(vm, object_type_id=1504)
+        racktables().add_object(vm, object_type_id=1504)
     except InvalidURL:
         # This happens when an object is created successfully
         pass
@@ -296,17 +301,17 @@ def create_racktables_obj(rt, vm, vm_props):
         # This happens when an object already exists, we also want to ignore this
         pass
 
-    rt_id = get_rt_vm_by_name(rt, vm)
+    rt_id = get_rt_vm_by_name(vm)
 
     if rt_id:
         try:
-            rt.update_object_tags(rt_id, generate_tags(vm_props))
+            racktables().update_object_tags(rt_id, generate_tags(vm_props))
         except client.RacktablesClientException:
             print("The specified tags could not be found. Tags on %s (ID %s) will not be updated" % ( vm, rt_id))
-        add_to_cluster(rt, rt_id, vm_props)
-        replace_ip_addresses(rt, rt_id, vm_props)
+        add_to_cluster(rt_id, vm_props)
+        replace_ip_addresses(rt_id, vm_props)
         try:
-            ret = rt.edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(rt, vm, vm_props))
+            ret = racktables().edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(vm, vm_props))
             if ret == '':
                 print("An error has occurred while updating the properties for vm %s (ID %s)" % (vm, rt_id))
         except InvalidURL:
@@ -320,10 +325,10 @@ def create_racktables_obj(rt, vm, vm_props):
     return None
 
 
-def simple_check(vmwserver):
+def simple_check():
     # Get current machine list
     outfile = '/tmp/.vmware-to-racktables-list'
-    new_list = vmwserver.get_registered_vms()
+    new_list = vsphere().get_registered_vms()
     # Check if file already exists
     if os.path.isfile(outfile):
         # Load file
@@ -337,49 +342,47 @@ def simple_check(vmwserver):
     return False
 
 
-def vm_powered_on(vmwserver, vm_path):
-    vm = vmwserver.get_vm_by_path(vm_path)
+def vm_powered_on(vm_path):
+    vm = vsphere().get_vm_by_path(vm_path)
     return vm.is_powered_on()
 
 
 def main(args):
-    rt = racktables()
-    vmwserver = vsphere()
-
     if args.simple:
-        if simple_check(vmwserver):
+        if simple_check():
             exit(0)
 
     # Read in list of VMs from Racktables
     vprint("Retrieving Racktables VM list...")
-    rt_ids, rt_list = get_racktables_list(rt)
+    rt_ids, rt_list = get_racktables_list()
 
     # Read in list of VMs from VMWare
     vvprint("\n")
-    vmw_list, vmw_paths = get_vmw_list(vmwserver, get_vmw_cluster_map(vmwserver))
+    vprint("Retrieving VSphere VM list...")
+    vmw_list, vmw_paths = get_vmw_list()
 
     # Find differences between the data recorded in Racktables compared to VMWare's
     diff = DictDiffer(vmw_list, rt_list)
 
     vprint("Updating changed objects...")
     for vm in diff.changed():
-        if vm_powered_on(vmwserver, vmw_paths[vm]):
+        if vm_powered_on(vmw_paths[vm]):
             vprint("VM %s has changed. Creating new object in racktables..." % vm)
             vvprint("Racktables entry: %r" % rt_list[vm])
             vvprint("vSphere entry: %r" % vmw_list[vm])
-            create_racktables_obj(rt, vm, vmw_list[vm])
+            create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Adding new objects...")
     for vm in diff.added():
         vprint("VM %s has been added. Creating object in racktables..." % vm)
-        create_racktables_obj(rt, vm, vmw_list[vm])
+        create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Deleting old objects...")
     for vm in diff.removed():
         vprint("VM %s has been removed. Deleting object in racktables..." % vm)
-        remove_racktables_obj(rt, vm, rt_ids[vm], rt_list[vm])
+        remove_racktables_obj(vm, rt_ids[vm], rt_list[vm])
 
 
 if __name__ == '__main__':
