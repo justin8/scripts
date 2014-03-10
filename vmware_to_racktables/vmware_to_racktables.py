@@ -36,11 +36,17 @@ class DictDiffer(object):
         return set(o for o in self.intersect if self.past_dict[o] == self.current_dict[o])
 
 def vprint(message):
-    if args.verbose > 0:
+    try:
+        if args.verbose > 0:
+            print(message)
+    except NameError:
         print(message)
 
 def vvprint(message):
-    if args.verbose > 1:
+    try:
+        if args.verbose > 1:
+            print(message)
+    except NameError:
         print(message)
 
 def read_password_file(pw_file):
@@ -184,18 +190,25 @@ def get_vmw_cluster_map(vmwserver):
     return cluster_map
 
 def get_cluster_id(rt, clustername):
-    clusters = rt.get_objects(type_filter=1505)
-    for cluster in clusters:
-        if clusters[cluster]['name'] == clustername:
-            return cluster
-    return None
+    if not hasattr(get_cluster_id, 'cluster_map'):
+        vprint("Initializing cluster ID map...")
+        get_cluster_id.cluster_map = {}
+        clusters = rt.get_objects(type_filter=1505)
+        for cluster in clusters:
+            get_cluster_id.cluster_map[clusters[cluster]['name']] = cluster
+    try:
+        return get_cluster_id.cluster_map[clustername]
+    except KeyError:
+        return None
 
 def get_os_id(rt, osname):
-    oses = rt.get_chapter(13)
-    for o in oses:
-        if oses[o] == osname:
-            return o
-    return None
+    if not hasattr(get_os_id, 'os_map'):
+        vprint("Initializing OS ID map...")
+        get_os_id.os_map = { v:k for k, v in rt.get_chapter(13).items() }
+    try:
+        return get_os_id.os_map[osname]
+    except KeyError:
+        return None
 
 def add_to_cluster(rt, rt_id, vm_props):
     clusterid = get_cluster_id(rt, vm_props['clustername'])
@@ -255,6 +268,9 @@ def remove_racktables_obj(rt, vm, rt_id, vm_props):
         rt.delete_object(rt_id)
     except InvalidURL:
         # This happens when an object is deleted or didn't exist in the first place
+        pass
+    except ValueError:
+        # This happens occasionally when an object is deleted. It is still probably successful
         pass
     return None
 
