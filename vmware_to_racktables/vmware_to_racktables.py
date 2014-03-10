@@ -132,7 +132,7 @@ def get_racktables_list(rt):
         vvprint("Name: %s\nID: %s\n" % ( hostname, i ))
         rt_list[hostname] = {
                 'clustername': rt_objs[i]['container_name'],
-                'osname': get_rt_attr(attrs, 'SW Type'),
+                'osname': get_rt_attr(attrs, 'SW type'),
                 'cores': get_rt_attr(attrs, 'CPU cores, No.'),
                 'datastore': get_rt_attr(attrs, 'Datastore'),
                 'ip_addresses': {}
