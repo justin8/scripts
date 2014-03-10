@@ -77,15 +77,21 @@ def get_rt_details(rt, rt_id):
     details = rt.get_object(rt_id, get_attrs=True)
     return ( details['attrs'], details['ipv4'] )
 
-def get_rt_cores(rt, attrs):
+def get_rt_cores(attrs):
     try:
         return attrs['CPU cores, No.']['a_value']
     except KeyError:
         return None
 
-def get_rt_osname(rt, attrs):
+def get_rt_osname(attrs):
     try:
         return attrs['SW type']['a_value']
+    except KeyError:
+        return None
+
+def get_rt_datastore(attrs):
+    try:
+        return attrs['Datastore']['a_value']
     except KeyError:
         return None
 
@@ -115,6 +121,10 @@ def get_vmw_osname(vm):
     else:
         return None
 
+def get_vmw_datastore(vm):
+    path = vm.get_property('path')
+    datastore = re.search('\[(.*?)\]', path)
+    return datastore.groups()[0]
 
 def get_racktables_list(rt):
     rt_objs = rt.get_objects(type_filter=1504)
@@ -128,8 +138,9 @@ def get_racktables_list(rt):
         vvprint("Name: %s\nID: %s\n" % ( hostname, i ))
         rt_list[hostname] = {
                 'clustername': rt_objs[i]['container_name'],
-                'osname': get_rt_osname(rt, attrs),
-                'cores': get_rt_cores(rt, attrs),
+                'osname': get_rt_osname(attrs),
+                'cores': get_rt_cores(attrs),
+                'datastore': get_rt_datastore(attrs),
                 'ip_addresses': {}
                 }
 
@@ -154,6 +165,7 @@ def get_vmw_list(vmwserver, cluster_map):
                 'clustername': cluster_map.get(i, ''),
                 'osname': get_vmw_osname(cur_vm),
                 'cores': str(cur_vm.get_property('num_cpu')),
+                'datastore': get_vmw_datastore(cur_vm),
                 'ip_addresses': {}
                 }
         networks = cur_vm.get_property('net')
