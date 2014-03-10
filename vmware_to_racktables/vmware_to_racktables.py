@@ -81,6 +81,7 @@ def get_rt_attr(attrs, name):
     try:
         return attrs[name]['a_value']
     except KeyError:
+        return None
 
 def get_vmw_osname(vm):
     os_translations = {
@@ -213,7 +214,8 @@ def generate_attrs(rt, vm, vm_props):
 
     attrs = {
         3: vm,
-        10018: vm_props['cores']
+        10018: vm_props['cores'],
+        10022: vm_props['datastore']
     }
     if vm_props['osname']:
         attrs[4] = get_os_id(rt, vm_props['osname'])
