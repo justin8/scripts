@@ -49,20 +49,27 @@ def vvprint(message):
     except NameError:
         print(message)
 
-def read_password_file(pw_file):
-    passwords = {}
-    with open(pw_file) as f:
-        passwords=json.load(f)
-    return passwords
+def get_passwords(pw_file=os.getenv('HOME') + '/.vmwrtpw'):
+    if not hasattr(get_passwords, 'passwords'):
+        get_passwords.passwords = {}
+        with open(pw_file) as f:
+            get_passwords.passwords=json.load(f)
+    return get_passwords.passwords
 
-def connect_racktables(passwords):
-    rt = client.RacktablesClient('http://racktables.wotifgroup.com/api.php', passwords['rtusername'], passwords['rtpassword'])
-    return rt
+def racktables():
+    if not hasattr(racktables, 'rt'):
+        racktables.rt = client.RacktablesClient('http://racktables.wotifgroup.com/api.php',
+                get_passwords()['rtusername'],
+                get_passwords()['rtpassword'])
+    return racktables.rt
 
-def connect_vsphere(passwords):
-    vmwserver = pysphere.VIServer()
-    vmwserver.connect("vcenter.core.wotifgroup.com", passwords['vmwusername'], passwords['vmwpassword'])
-    return vmwserver
+def vsphere():
+    if not hasattr(vsphere, 'vmwserver'):
+        vsphere.vmwserver = pysphere.VIServer()
+        vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
+                get_passwords()['vmwusername'],
+                get_passwords()['vmwpassword'])
+    return vsphere.vmwserver
 
 def generate_tags(vm_props):
     tags=[]
@@ -336,9 +343,8 @@ def vm_powered_on(vmwserver, vm_path):
 
 
 def main(args):
-    passwords = read_password_file(os.getenv('HOME') + '/.vmwrtpw')
-    rt = connect_racktables(passwords)
-    vmwserver = connect_vsphere(passwords)
+    rt = racktables()
+    vmwserver = vsphere()
 
     if args.simple:
         if simple_check(vmwserver):
