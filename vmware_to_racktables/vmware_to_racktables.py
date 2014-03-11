@@ -14,6 +14,7 @@ import re
 
 lock = singleton.SingleInstance()
 
+
 class DictDiffer(object):
     """
   Calculate the difference between two dictionaries as:
@@ -24,16 +25,24 @@ class DictDiffer(object):
     """
     def __init__(self, current_dict, past_dict):
         self.current_dict, self.past_dict = current_dict, past_dict
-        self.set_current, self.set_past = set(current_dict.keys()), set(past_dict.keys())
+        self.set_current, self.set_past = set(
+            current_dict.keys()), set(past_dict.keys())
         self.intersect = self.set_current.intersection(self.set_past)
+
     def added(self):
         return self.set_current - self.intersect
+
     def removed(self):
         return self.set_past - self.intersect
+
     def changed(self):
-        return set(o for o in self.intersect if self.past_dict[o] != self.current_dict[o])
+        return set(o for o in self.intersect
+                   if self.past_dict[o] != self.current_dict[o])
+
     def unchanged(self):
-        return set(o for o in self.intersect if self.past_dict[o] == self.current_dict[o])
+        return set(o for o in self.intersect
+                   if self.past_dict[o] == self.current_dict[o])
+
 
 def vprint(message):
     try:
@@ -42,6 +51,7 @@ def vprint(message):
     except NameError:
         print(message)
 
+
 def vvprint(message):
     try:
         if args.verbose > 1:
@@ -49,35 +59,43 @@ def vvprint(message):
     except NameError:
         print(message)
 
+
 def get_passwords(pw_file=os.getenv('HOME') + '/.vmwrtpw'):
+    """Defaults to use a password file in the home directory. Running this
+    function with a different pw_file will set it for all future uses"""
     if not hasattr(get_passwords, 'passwords'):
         get_passwords.passwords = {}
         with open(pw_file) as f:
-            get_passwords.passwords=json.load(f)
+            get_passwords.passwords = json.load(f)
     return get_passwords.passwords
+
 
 def racktables():
     if not hasattr(racktables, 'rt'):
-        racktables.rt = client.RacktablesClient('http://racktables.wotifgroup.com/api.php',
-                get_passwords()['rtusername'],
-                get_passwords()['rtpassword'])
+        racktables.rt = client.RacktablesClient(
+            'http://racktables.wotifgroup.com/api.php',
+            get_passwords()['rtusername'],
+            get_passwords()['rtpassword'])
     return racktables.rt
+
 
 def vsphere():
     if not hasattr(vsphere, 'vmwserver'):
         vsphere.vmwserver = pysphere.VIServer()
         vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
-                get_passwords()['vmwusername'],
-                get_passwords()['vmwpassword'])
+                                  get_passwords()['vmwusername'],
+                                  get_passwords()['vmwpassword'])
     return vsphere.vmwserver
 
+
 def generate_tags(vm_props):
-    tags=[]
+    tags = []
     if re.search('BNE2', vm_props['clustername']):
         tags.append('Eagle Farm')
     elif re.search('SYD2|UAT', vm_props['clustername']):
         tags.append('Global Switch')
     return tags
+
 
 def get_rt_vm_by_name(name):
     rt_objs = racktables().get_objects(type_filter=1504)
@@ -86,9 +104,11 @@ def get_rt_vm_by_name(name):
             return vm
     return None
 
+
 def get_rt_details(rt_id):
     details = racktables().get_object(rt_id, get_attrs=True)
-    return ( details['attrs'], details['ipv4'] )
+    return (details['attrs'], details['ipv4'])
+
 
 def get_rt_attr(attrs, name):
     try:
@@ -96,60 +116,65 @@ def get_rt_attr(attrs, name):
     except KeyError:
         return None
 
+
 def get_vmw_osname(vm):
     os_translations = {
-            'win2000AdvServGuest': 'Windows 2000',
-            'winXPProGuest': 'Windows XP',
-            'winNetStandard64Guest': 'Windows 2003',
-            'winNetStandardGuest': 'Windows 2003',
-            'winLonghorn64Guest': 'Windows Server 2008',
-            'winLonghornGuest': 'Windows Server 2008',
-            'windows7_64Guest': 'Windows 7',
-            'windows8_64Guest': 'Windows 8',
-            'windows7Server64Guest': 'Windows Server 2008 R2',
-            'windows8Server64Guest': 'Windows Server 2012',
-            'centos64Guest': 'CentOS V5',
-            'debian6Guest': 'Debian 6.0 (squeeze)',
-            'rhel3Guest': 'RHEL V3',
-            'rhel4Guest': 'RHEL V4',
-            'rhel5_Guest': 'RHEL V5',
-            'rhel5_64Guest': 'RHEL V5',
-            'rhel6_64Guest': 'RHEL V6'
-            }
+        'win2000AdvServGuest': 'Windows 2000',
+        'winXPProGuest': 'Windows XP',
+        'winNetStandard64Guest': 'Windows 2003',
+        'winNetStandardGuest': 'Windows 2003',
+        'winLonghorn64Guest': 'Windows Server 2008',
+        'winLonghornGuest': 'Windows Server 2008',
+        'windows7_64Guest': 'Windows 7',
+        'windows8_64Guest': 'Windows 8',
+        'windows7Server64Guest': 'Windows Server 2008 R2',
+        'windows8Server64Guest': 'Windows Server 2012',
+        'centos64Guest': 'CentOS V5',
+        'debian6Guest': 'Debian 6.0 (squeeze)',
+        'rhel3Guest': 'RHEL V3',
+        'rhel4Guest': 'RHEL V4',
+        'rhel5_Guest': 'RHEL V5',
+        'rhel5_64Guest': 'RHEL V5',
+        'rhel6_64Guest': 'RHEL V6'
+        }
     os_id = vm.get_property('guest_id')
     if os_id in os_translations:
         return os_translations[os_id]
     else:
         return None
 
+
 def get_vmw_datastore(vm):
     path = vm.get_property('path')
     datastore = re.search('\[(.*?)\]', path)
     return datastore.groups()[0]
+
 
 def get_racktables_list():
     rt_objs = racktables().get_objects(type_filter=1504)
     rt_ids = {}
     rt_list = {}
 
-    for i in rt_objs:
-        hostname = rt_objs[i]['name']
+    for i, vm in rt_objs.iteritems():
+        hostname = vm['name']
         rt_ids[hostname] = i
         attrs, networks = get_rt_details(i)
-        vvprint("Name: %s\nID: %s\n" % ( hostname, i ))
+        vvprint("Name: %s\nID: %s\n" % (hostname, i))
         rt_list[hostname] = {
-                'clustername': rt_objs[i]['container_name'],
-                'osname': get_rt_attr(attrs, 'SW type'),
-                'cores': get_rt_attr(attrs, 'CPU cores, No.'),
-                'datastore': get_rt_attr(attrs, 'Datastore'),
-                'ip_addresses': {}
-                }
+            'clustername': vm['container_name'],
+            'osname': get_rt_attr(attrs, 'SW type'),
+            'cores': get_rt_attr(attrs, 'CPU cores, No.'),
+            'datastore': get_rt_attr(attrs, 'Datastore'),
+            'ip_addresses': {}
+            }
 
-        for net in networks:
-            rt_list[hostname]['ip_addresses'][networks[net]['osif']] = networks[net]['addrinfo']['ip']
-        vvprint("Retrieved racktables VM record for %s: %r" % ( hostname, rt_list[hostname] ))
+        for network in networks.itervalues():
+            rt_list[hostname]['ip_addresses'][network['osif']] = network['addrinfo']['ip']
+        vvprint("Retrieved racktables VM record for %s: %r"
+                % (hostname, rt_list[hostname]))
 
-    return ( rt_ids, rt_list )
+    return (rt_ids, rt_list)
+
 
 def get_vmw_list():
     vmw_list = {}
@@ -163,12 +188,12 @@ def get_vmw_list():
             hostname = cur_vm.get_property('name')
         vmw_paths[hostname] = i
         vmw_list[hostname] = {
-                'clustername': get_vmw_cluster(i),
-                'osname': get_vmw_osname(cur_vm),
-                'cores': str(cur_vm.get_property('num_cpu')),
-                'datastore': get_vmw_datastore(cur_vm),
-                'ip_addresses': {}
-                }
+            'clustername': get_vmw_cluster(i),
+            'osname': get_vmw_osname(cur_vm),
+            'cores': str(cur_vm.get_property('num_cpu')),
+            'datastore': get_vmw_datastore(cur_vm),
+            'ip_addresses': {}
+            }
         networks = cur_vm.get_property('net')
         if networks:
             for eth, net in enumerate(networks):
@@ -179,14 +204,16 @@ def get_vmw_list():
                         try:
                             inet_aton(ip)
                             if 'eth%s' % eth in vmw_list[hostname]['ip_addresses']:
-                                vmw_list[hostname]['ip_addresses']['eth%s:%s' % ( eth, num )] = ip
+                                vmw_list[hostname]['ip_addresses']['eth%s:%s' % (eth, num)] = ip
                             else:
                                 vmw_list[hostname]['ip_addresses']['eth%s' % eth] = ip
                         except:
                             pass
 
-        vvprint("Retrieved VMWare VM record for %s: %r" % ( hostname, vmw_list[hostname] ))
-    return ( vmw_list, vmw_paths )
+        vvprint("Retrieved VMWare VM record for %s: %r"
+                % (hostname, vmw_list[hostname]))
+    return (vmw_list, vmw_paths)
+
 
 def get_vmw_cluster(vmpath):
     if not hasattr(get_vmw_cluster, 'cluster_map'):
@@ -201,6 +228,7 @@ def get_vmw_cluster(vmpath):
     except KeyError:
         return ''
 
+
 def get_cluster_id(clustername):
     if not hasattr(get_cluster_id, 'cluster_map'):
         vprint("Initializing cluster ID map...")
@@ -213,14 +241,17 @@ def get_cluster_id(clustername):
     except KeyError:
         return None
 
+
 def get_os_id(osname):
     if not hasattr(get_os_id, 'os_map'):
         vprint("Initializing OS ID map...")
-        get_os_id.os_map = { v:k for k, v in racktables().get_chapter(13).items() }
+        get_os_id.os_map = {v: k for k, v in
+                            racktables().get_chapter(13).items()}
     try:
         return get_os_id.os_map[osname]
     except KeyError:
         return None
+
 
 def add_to_cluster(rt_id, vm_props):
     clusterid = get_cluster_id(vm_props['clustername'])
@@ -229,6 +260,7 @@ def add_to_cluster(rt_id, vm_props):
     # which will break the child object in the web UI
     racktables().link_entities(rt_id, clusterid)
     return None
+
 
 def generate_attrs(vm, vm_props):
     # Attr IDs:
@@ -246,6 +278,7 @@ def generate_attrs(vm, vm_props):
         attrs[4] = get_os_id(vm_props['osname'])
     return attrs
 
+
 def replace_ip_addresses(rt_id, vm_props):
     #Remove current IPs first
     old_rt_ips = racktables().get_object(rt_id)['ipv4']
@@ -257,7 +290,8 @@ def replace_ip_addresses(rt_id, vm_props):
             # This happens when the IP address was deleted successfully
             pass
         except ValueError:
-            # This happens (occasionally) when an IP address is deleted. It is still probably successful
+            # This happens (occasionally) when an IP address is deleted.
+            # It is still probably successful
             pass
 
     for dev, ip in vm_props['ip_addresses'].iteritems():
@@ -267,27 +301,34 @@ def replace_ip_addresses(rt_id, vm_props):
             # This happens when the IP address was added successfully
             pass
         except TypeError:
-            # This happens when the IP address already exists on this device, or an invalid IP address is given
+            # This happens when the IP address already exists on this device,
+            # or an invalid IP address is given
             pass
         except ValueError:
-            # This happens (occasionally) when an IP address is added. It is still probably successful
+            # This happens (occasionally) when an IP address is added.
+            # It is still probably successful
             pass
     return None
 
+
 def remove_racktables_obj(vm, rt_id, vm_props):
-    vvprint("Object removal for %s (ID: %s) started. %r" % ( vm, rt_id, vm_props ))
+    vvprint("Object removal for %s (ID: %s) started. %r"
+            % (vm, rt_id, vm_props))
     try:
         racktables().delete_object(rt_id)
     except InvalidURL:
-        # This happens when an object is deleted or didn't exist in the first place
+        # This happens when an object is deleted
+        # or didn't exist in the first place
         pass
     except ValueError:
-        # This happens occasionally when an object is deleted. It is still probably successful
+        # This happens occasionally when an object is deleted.
+        # It is still probably successful
         pass
     return None
 
+
 def create_racktables_obj(vm, vm_props):
-    vvprint("Object creation for %s started. %r" % ( vm, vm_props ))
+    vvprint("Object creation for %s started. %r" % (vm, vm_props))
 
     try:
         racktables().add_object(vm, object_type_id=1504)
@@ -295,10 +336,12 @@ def create_racktables_obj(vm, vm_props):
         # This happens when an object is created successfully
         pass
     except ValueError:
-        # This happens (occasionally) when an object is created (still successfully)
+        # This happens (occasionally) when an object
+        # is created (still successfully)
         pass
     except TypeError:
-        # This happens when an object already exists, we also want to ignore this
+        # This happens when an object already exists,
+        # we also want to ignore this
         pass
 
     rt_id = get_rt_vm_by_name(vm)
@@ -307,18 +350,25 @@ def create_racktables_obj(vm, vm_props):
         try:
             racktables().update_object_tags(rt_id, generate_tags(vm_props))
         except client.RacktablesClientException:
-            print("The specified tags could not be found. Tags on %s (ID %s) will not be updated" % ( vm, rt_id))
+            print("The specified tags could not be found. Tags on %s (ID %s) "
+                  "will not be updated" % (vm, rt_id))
         add_to_cluster(rt_id, vm_props)
         replace_ip_addresses(rt_id, vm_props)
         try:
-            ret = racktables().edit_object(rt_id, object_name=vm, object_type_id=1504, attrs=generate_attrs(vm, vm_props))
+            ret = racktables().edit_object(
+                rt_id,
+                object_name=vm,
+                object_type_id=1504,
+                attrs=generate_attrs(vm, vm_props))
             if ret == '':
-                print("An error has occurred while updating the properties for vm %s (ID %s)" % (vm, rt_id))
+                print("An error has occurred while updating the properties "
+                      "for vm %s (ID %s)" % (vm, rt_id))
         except InvalidURL:
             # This happens when it is successful
             pass
         except ValueError:
-            # This sometimes also happens, but appears to always be successful anyway.
+            # This sometimes also happens, but appears
+            # to always be successful anyway.
             pass
     else:
         print("An error has occurred while creating %s" % vm)
@@ -361,13 +411,15 @@ def main(args):
     vprint("Retrieving VSphere VM list...")
     vmw_list, vmw_paths = get_vmw_list()
 
-    # Find differences between the data recorded in Racktables compared to VMWare's
+    # Find differences between the data recorded
+    # in Racktables compared to VMWare's
     diff = DictDiffer(vmw_list, rt_list)
 
     vprint("Updating changed objects...")
     for vm in diff.changed():
         if vm_powered_on(vmw_paths[vm]):
-            vprint("VM %s has changed. Creating new object in racktables..." % vm)
+            vprint("VM %s has changed. Creating new object in racktables..."
+                   % vm)
             vvprint("Racktables entry: %r" % rt_list[vm])
             vvprint("vSphere entry: %r" % vmw_list[vm])
             create_racktables_obj(vm, vmw_list[vm])
@@ -387,7 +439,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', help='Increase verbosity of output', action='count')
-    parser.add_argument('-s', '--simple', help='Only perform a quick check for new VMs, and not changed/deleted VMs', action='store_true')
+    parser.add_argument('-v', '--verbose',
+                        help='Increase verbosity of output',
+                        action='count')
+    parser.add_argument('-s', '--simple', help='Only perform a quick check '
+                        'for new VMs, and not changed/deleted VMs',
+                        action='store_true')
     args = parser.parse_args()
     main(args)
