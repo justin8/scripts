@@ -1,16 +1,20 @@
 #!/usr/bin/env python2
-
 from __future__ import print_function
-from httplib import InvalidURL
-from racktables import client
-from socket import inet_aton
-from sys import exit
-from tendo import singleton
+
 import argparse
 import json
+from httplib import InvalidURL
 import os
-import pysphere
+from multiprocessing.pool import ThreadPool
 import re
+import socket
+from sys import exit
+import time
+
+import pysphere
+from tendo import singleton
+
+from racktables import client
 
 lock = singleton.SingleInstance()
 
@@ -169,50 +173,64 @@ def get_racktables_list():
             }
 
         for network in networks.itervalues():
-            rt_list[hostname]['ip_addresses'][network['osif']] = network['addrinfo']['ip']
+            rt_list[hostname]['ip_addresses'][network['osif']] = \
+                network['addrinfo']['ip']
         vvprint("Retrieved racktables VM record for %s: %r"
                 % (hostname, rt_list[hostname]))
 
     return (rt_ids, rt_list)
 
 
+def get_vm(vmpath):
+    cur_vm = vsphere().get_vm_by_path(vmpath)
+    hostname = cur_vm.get_property('hostname')
+    if not hostname:
+        hostname = cur_vm.get_property('name')
+    vm = {
+        'path': vmpath,
+        'hostname': hostname,
+        'clustername': get_vmw_cluster(vmpath),
+        'osname': get_vmw_osname(cur_vm),
+        'cores': str(cur_vm.get_property('num_cpu')),
+        'datastore': get_vmw_datastore(cur_vm),
+        'ip_addresses': {}
+    }
+    networks = cur_vm.get_property('net')
+    if networks:
+        for eth, net in enumerate(networks):
+            # We only care about mac addresses that are mapped
+            # to vmnics; not dummy networks. Looking at you app5!
+            if net['network']:
+                for num, ip in enumerate(net['ip_addresses']):
+                    try:
+                        socket.inet_aton(ip)
+                    except socket.error:
+                        continue
+                    eth_string = 'eth%s' % eth
+                    if eth_string in vm['ip_addresses']:
+                        vm['ip_addresses']['eth%s:%s' % (eth, num)] = ip
+                    else:
+                        vm['ip_addresses'][eth_string] = ip
+    vvprint("Retrieved VMWare VM record for %r\n" % vm)
+    return vm
+
+
 def get_vmw_list():
     vmw_list = {}
     vmw_paths = {}
-
-    for i in vsphere().get_registered_vms():
-        # This is the slow bit:
-        cur_vm = vsphere().get_vm_by_path(i)
-        hostname = cur_vm.get_property('hostname')
-        if not hostname:
-            hostname = cur_vm.get_property('name')
-        vmw_paths[hostname] = i
-        vmw_list[hostname] = {
-            'clustername': get_vmw_cluster(i),
-            'osname': get_vmw_osname(cur_vm),
-            'cores': str(cur_vm.get_property('num_cpu')),
-            'datastore': get_vmw_datastore(cur_vm),
-            'ip_addresses': {}
-            }
-        networks = cur_vm.get_property('net')
-        if networks:
-            for eth, net in enumerate(networks):
-                # We only care about mac addresses that are mapped
-                # to vmnics; not dummy networks. Looking at you app5!
-                if net['network']:
-                    for num, ip in enumerate(net['ip_addresses']):
-                        try:
-                            inet_aton(ip)
-                            if 'eth%s' % eth in vmw_list[hostname]['ip_addresses']:
-                                vmw_list[hostname]['ip_addresses']['eth%s:%s' % (eth, num)] = ip
-                            else:
-                                vmw_list[hostname]['ip_addresses']['eth%s' % eth] = ip
-                        except:
-                            pass
-
-        vvprint("Retrieved VMWare VM record for %s: %r"
-                % (hostname, vmw_list[hostname]))
-    return (vmw_list, vmw_paths)
+    pool = ThreadPool(processes=1)
+    vmpaths = vsphere().get_registered_vms()
+    get_vmw_cluster('')
+    t0 = time.time()
+    vms = pool.map(get_vm, vmpaths)
+    print('took %s' % (time.time() - t0))
+    for vm in vms:
+        hostname = vm.pop('hostname')
+        path = vm.pop('path')
+        vmw_list[hostname] = vm
+        vmw_paths[hostname] = path
+    pool.close()
+    return vmw_list, vmw_paths
 
 
 def get_vmw_cluster(vmpath):
