@@ -80,15 +80,22 @@ def racktables():
             'http://racktables.wotifgroup.com/api.php',
             get_passwords()['rtusername'],
             get_passwords()['rtpassword'])
+        if not racktables.rt.get_chapter(13):
+            print('An error has occurred while connecting to racktables! Aborting.')
+            exit(1)
     return racktables.rt
 
 
 def vsphere():
     if not hasattr(vsphere, 'vmwserver'):
         vsphere.vmwserver = pysphere.VIServer()
-        vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
-                                  get_passwords()['vmwusername'],
-                                  get_passwords()['vmwpassword'])
+        try:
+            vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
+                                      get_passwords()['vmwusername'],
+                                      get_passwords()['vmwpassword'])
+        except pysphere.VIApiException:
+            print('An error has occurred while connecting to vSphere! Aborting.')
+            exit(1)
     return vsphere.vmwserver
 
 
@@ -154,38 +161,56 @@ def get_vmw_datastore(vm):
     return datastore.groups()[0]
 
 
+def get_rt_objs(type=1504):
+    '''Default type filter is 1504 (VMs)'''
+    if not hasattr(get_rt_objs, 'rt_objs'):
+        vvprint("Creating blank rt_objs record")
+        get_rt_objs.rt_objs = {}
+    if type not in get_rt_objs.rt_objs:
+        vvprint("Initializing rt_objs entry for type %d" % type)
+        get_rt_objs.rt_objs[type] = racktables().get_objects(type_filter=type)
+    return get_rt_objs.rt_objs[type]
+
+
+def get_rt_vm(rt_id):
+    attrs, networks = get_rt_details(rt_id)
+    vm_obj = get_rt_objs()[rt_id]
+    vm = {
+        'rt_id': rt_id,
+        'hostname': vm_obj['name'],
+        'clustername': vm_obj['container_name'],
+        'osname': get_rt_attr(attrs, 'SW Type'),
+        'cores': get_rt_attr(attrs, 'CPU cores, No.'),
+        'datastore': get_rt_attr(attrs, 'Datastore'),
+        'ip_addresses': {},
+        }
+    for network in networks.itervalues():
+        vm_obj['ip_addresses'][network['osif']] = \
+            network['addrinfo']['ip']
+    vvprint("Retrieved racktables VM record: %r" % vm)
+
+    return vm
+
+
 def get_racktables_list():
-    rt_objs = racktables().get_objects(type_filter=1504)
     rt_ids = {}
     rt_list = {}
-
-    if rt_objs == '':
-        print('An error has occurred while connecting to racktables! Aborting.')
-        exit(1)
-
-    for i, vm in rt_objs.iteritems():
-        hostname = vm['name']
-        rt_ids[hostname] = i
-        attrs, networks = get_rt_details(i)
-        vvprint("Name: %s\nID: %s\n" % (hostname, i))
-        rt_list[hostname] = {
-            'clustername': vm['container_name'],
-            'osname': get_rt_attr(attrs, 'SW type'),
-            'cores': get_rt_attr(attrs, 'CPU cores, No.'),
-            'datastore': get_rt_attr(attrs, 'Datastore'),
-            'ip_addresses': {}
-            }
-
-        for network in networks.itervalues():
-            rt_list[hostname]['ip_addresses'][network['osif']] = \
-                network['addrinfo']['ip']
-        vvprint("Retrieved racktables VM record for %s: %r"
-                % (hostname, rt_list[hostname]))
+    pool = ThreadPool(processes=4)
+    vmids = get_rt_objs().keys()
+    t0 = time.time()
+    vms = pool.map(get_rt_vm, vmids)
+    vvprint('Gathering RT list took %s seconds' % (time.time() - t0))
+    for vm in vms:
+        hostname = vm.pop('hostname')
+        rt_id = vm.pop('rt_id')
+        rt_list[hostname] = vm
+        rt_ids[hostname] = rt_id
+    pool.close()
 
     return (rt_ids, rt_list)
 
 
-def get_vm(vmpath):
+def get_vmw_vm(vmpath):
     cur_vm = vsphere().get_vm_by_path(vmpath)
     hostname = cur_vm.get_property('hostname')
     if not hostname:
@@ -226,8 +251,8 @@ def get_vmw_list():
     vmpaths = vsphere().get_registered_vms()
     get_vmw_cluster('')
     t0 = time.time()
-    vms = pool.map(get_vm, vmpaths)
-    print('Gathering VMW list took %s seconds' % (time.time() - t0))
+    vms = pool.map(get_vmw_vm, vmpaths)
+    vvprint('Gathering VMW list took %s seconds' % (time.time() - t0))
     for vm in vms:
         hostname = vm.pop('hostname')
         path = vm.pop('path')
