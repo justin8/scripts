@@ -159,6 +159,10 @@ def get_racktables_list():
     rt_ids = {}
     rt_list = {}
 
+    if rt_objs == '':
+        print('An error has occurred while connecting to racktables! Aborting.')
+        exit(1)
+
     for i, vm in rt_objs.iteritems():
         hostname = vm['name']
         rt_ids[hostname] = i
