@@ -185,7 +185,7 @@ def get_rt_vm(rt_id):
         'ip_addresses': {},
         }
     for network in networks.itervalues():
-        vm_obj['ip_addresses'][network['osif']] = \
+        vm['ip_addresses'][network['osif']] = \
             network['addrinfo']['ip']
     vvprint("Retrieved racktables VM record: %r" % vm)
 
