@@ -218,12 +218,12 @@ def get_vm(vmpath):
 def get_vmw_list():
     vmw_list = {}
     vmw_paths = {}
-    pool = ThreadPool(processes=1)
+    pool = ThreadPool(processes=6)
     vmpaths = vsphere().get_registered_vms()
     get_vmw_cluster('')
     t0 = time.time()
     vms = pool.map(get_vm, vmpaths)
-    print('took %s' % (time.time() - t0))
+    print('Gathering VMW list took %s seconds' % (time.time() - t0))
     for vm in vms:
         hostname = vm.pop('hostname')
         path = vm.pop('path')
