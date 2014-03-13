@@ -449,6 +449,10 @@ def main(args):
         if simple_check():
             exit(0)
 
+    if args.dryrun:
+        print("Dry-run mode enabled!")
+        args.verbose = 2
+
     # Read in list of VMs from Racktables
     vprint("Retrieving Racktables VM list...")
     rt_ids, rt_list = get_racktables_list()
@@ -469,19 +473,22 @@ def main(args):
                    % vm)
             vvprint("Racktables entry: %r" % rt_list[vm])
             vvprint("vSphere entry: %r" % vmw_list[vm])
-            create_racktables_obj(vm, vmw_list[vm])
+            if not args.dryrun:
+                create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Adding new objects...")
     for vm in diff.added():
         vprint("VM %s has been added. Creating object in racktables..." % vm)
-        create_racktables_obj(vm, vmw_list[vm])
+        if not args.dryrun:
+            create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Deleting old objects...")
     for vm in diff.removed():
         vprint("VM %s has been removed. Deleting object in racktables..." % vm)
-        remove_racktables_obj(vm, rt_ids[vm], rt_list[vm])
+        if not args.dryrun:
+            remove_racktables_obj(vm, rt_ids[vm], rt_list[vm])
 
 
 if __name__ == '__main__':
@@ -492,5 +499,10 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--simple', help='Only perform a quick check '
                         'for new VMs, and not changed/deleted VMs',
                         action='store_true')
+    parser.add_argument('-d', '--dryrun', help='Do not apply changes to'
+                        'Racktables. Implies very verbose.',
+                        action='store_true')
+
     args = parser.parse_args()
+
     main(args)
