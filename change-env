@@ -78,6 +78,8 @@ prod()
 
 tst()
 {
+	echo "This cannot be tested yet!"
+	exit 0
 	if echo "$1" | grep -qE '^tst[0-9]+$'
 	then
 		env=$(echo "$1" | grep -oE '[0-9]+')
