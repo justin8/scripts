@@ -53,6 +53,13 @@ check_env()
 	fi
 }
 
+cleanup_vpns()
+{
+	# TODO: Make vpn connections get disabled when running any of the commands
+	echo "THIS SHOULD BE CLEANING UP ALL VPN CONNECTIONS! (BUT IT DOESN'T!)"
+	echo -n "Disconnecting from VPNs... "
+}
+
 dr()
 {
 	echo -n "Changing to DR environment... "
@@ -103,12 +110,15 @@ backup_resolvconf
 
 case $1 in
 	dr)
+		cleanup_vpns
 		dr
 		;;
 	prod|off)
+		cleanup_vpns
 		prod
 		;;
 	tst*)
+		cleanup_vpns
 		tst $1
 		;;
 	*)
