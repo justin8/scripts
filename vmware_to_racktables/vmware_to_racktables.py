@@ -179,7 +179,7 @@ def get_rt_vm(rt_id):
         'rt_id': rt_id,
         'hostname': vm_obj['name'],
         'clustername': vm_obj['container_name'],
-        'osname': get_rt_attr(attrs, 'SW Type'),
+        'osname': get_rt_attr(attrs, 'SW type'),
         'cores': get_rt_attr(attrs, 'CPU cores, No.'),
         'datastore': get_rt_attr(attrs, 'Datastore'),
         'ip_addresses': {},
