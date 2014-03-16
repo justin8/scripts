@@ -180,6 +180,7 @@ def get_rt_vm(rt_id):
         'hostname': vm_obj['name'],
         'clustername': vm_obj['container_name'],
         'osname': get_rt_attr(attrs, 'SW type'),
+        'comments': vm_obj['comment'],
         'cores': get_rt_attr(attrs, 'CPU cores, No.'),
         'datastore': get_rt_attr(attrs, 'Datastore'),
         'ip_addresses': {},
@@ -210,6 +211,13 @@ def get_racktables_list():
     return (rt_ids, rt_list)
 
 
+def get_vmw_comments(vm):
+    try:
+        return vm.properties.config.annotation
+    except AttributeError:
+        return ''
+
+
 def get_vmw_vm(vmpath):
     cur_vm = vsphere().get_vm_by_path(vmpath)
     hostname = cur_vm.get_property('hostname')
@@ -220,6 +228,7 @@ def get_vmw_vm(vmpath):
         'hostname': hostname,
         'clustername': get_vmw_cluster(vmpath),
         'osname': get_vmw_osname(cur_vm),
+        'comments': get_vmw_comments(cur_vm),
         'cores': str(cur_vm.get_property('num_cpu')),
         'datastore': get_vmw_datastore(cur_vm),
         'ip_addresses': {}
@@ -406,6 +415,7 @@ def create_racktables_obj(vm, vm_props):
                 rt_id,
                 object_name=vm,
                 object_type_id=1504,
+                object_comment=vm_props['comments'],
                 attrs=generate_attrs(vm, vm_props))
             if ret == '':
                 print("An error has occurred while updating the properties "
