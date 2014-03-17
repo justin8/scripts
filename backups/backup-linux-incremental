@@ -186,7 +186,7 @@ EOF
 			echo -n `clock`"Copying only non-package files for /usr & /opt"
 			while read file
 			do
-				rsync ${rsyncopts} --rsync-path='nice rsync' $inc $target:${file} "$backup_current"
+				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc $target:${file} "$backup_current"
 			done < $package_inclusions
 
 			echo -n `clock`"Generating package list..."
