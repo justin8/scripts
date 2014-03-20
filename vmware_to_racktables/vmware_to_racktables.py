@@ -108,6 +108,12 @@ def generate_tags(vm_props):
     return tags
 
 
+def clean_html_tags(dirtystring):
+    cleanstring = re.subn('&amp;', '&', dirtystring)[0]
+    cleanstring = re.subn('&quot;', '"', cleanstring)[0]
+    return cleanstring
+
+
 def get_rt_vm_by_name(name):
     rt_objs = racktables().get_objects(type_filter=1504)
     for vm in rt_objs:
@@ -180,7 +186,7 @@ def get_rt_vm(rt_id):
         'hostname': vm_obj['name'],
         'clustername': vm_obj['container_name'],
         'osname': get_rt_attr(attrs, 'SW type'),
-        'comments': vm_obj['comment'],
+        'comments': clean_html_tags(vm_obj['comment']),
         'cores': get_rt_attr(attrs, 'CPU cores, No.'),
         'datastore': get_rt_attr(attrs, 'Datastore'),
         'ip_addresses': {},
