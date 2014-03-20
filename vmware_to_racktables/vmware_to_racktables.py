@@ -76,13 +76,16 @@ def get_passwords(pw_file=os.getenv('HOME') + '/.vmwrtpw'):
 
 def racktables():
     if not hasattr(racktables, 'rt'):
-        racktables.rt = client.RacktablesClient(
-            'http://racktables.wotifgroup.com/api.php',
-            get_passwords()['rtusername'],
-            get_passwords()['rtpassword'])
-        if not racktables.rt.get_chapter(13):
-            print('An error has occurred while connecting to racktables! Aborting.')
-            exit(1)
+        try:
+            racktables.rt = client.RacktablesClient(
+                'http://racktables.wotifgroup.com/api.php',
+                get_passwords()['rtusername'],
+                get_passwords()['rtpassword'])
+            if not racktables.rt.get_chapter(13):
+                raise ValueError
+        except ValueError:
+                print('An error has occurred while connecting to racktables! Aborting.')
+                exit(1)
     return racktables.rt
 
 
