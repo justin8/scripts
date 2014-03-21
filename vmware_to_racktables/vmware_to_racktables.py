@@ -242,6 +242,9 @@ def get_vmw_vm(vmpath):
         'datastore': get_vmw_datastore(cur_vm),
         'ip_addresses': {}
     }
+    # Command to get the vm's host is 'your_vm_obj.properties.runtime.host.name'
+    # Racktables API does not support multiple containers and will need that
+    # Added first
     networks = cur_vm.get_property('net')
     if networks:
         for eth, net in enumerate(networks):
