@@ -76,19 +76,29 @@ def get_passwords(pw_file=os.getenv('HOME') + '/.vmwrtpw'):
 
 def racktables():
     if not hasattr(racktables, 'rt'):
-        racktables.rt = client.RacktablesClient(
-            'http://racktables.wotifgroup.com/api.php',
-            get_passwords()['rtusername'],
-            get_passwords()['rtpassword'])
+        try:
+            racktables.rt = client.RacktablesClient(
+                'http://racktables.wotifgroup.com/api.php',
+                get_passwords()['rtusername'],
+                get_passwords()['rtpassword'])
+            if not racktables.rt.get_chapter(13):
+                raise ValueError
+        except ValueError:
+                print('An error has occurred while connecting to racktables! Aborting.')
+                exit(1)
     return racktables.rt
 
 
 def vsphere():
     if not hasattr(vsphere, 'vmwserver'):
         vsphere.vmwserver = pysphere.VIServer()
-        vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
-                                  get_passwords()['vmwusername'],
-                                  get_passwords()['vmwpassword'])
+        try:
+            vsphere.vmwserver.connect("vcenter.core.wotifgroup.com",
+                                      get_passwords()['vmwusername'],
+                                      get_passwords()['vmwpassword'])
+        except pysphere.VIApiException:
+            print('An error has occurred while connecting to vSphere! Aborting.')
+            exit(1)
     return vsphere.vmwserver
 
 
@@ -99,6 +109,12 @@ def generate_tags(vm_props):
     elif re.search('SYD2|UAT', vm_props['clustername']):
         tags.append('Global Switch')
     return tags
+
+
+def clean_html_tags(dirtystring):
+    cleanstring = re.subn('&amp;', '&', dirtystring)[0]
+    cleanstring = re.subn('&quot;', '"', cleanstring)[0]
+    return cleanstring
 
 
 def get_rt_vm_by_name(name):
@@ -154,34 +170,64 @@ def get_vmw_datastore(vm):
     return datastore.groups()[0]
 
 
+def get_rt_objs(type=1504):
+    '''Default type filter is 1504 (VMs)'''
+    if not hasattr(get_rt_objs, 'rt_objs'):
+        vvprint("Creating blank rt_objs record")
+        get_rt_objs.rt_objs = {}
+    if type not in get_rt_objs.rt_objs:
+        vvprint("Initializing rt_objs entry for type %d" % type)
+        get_rt_objs.rt_objs[type] = racktables().get_objects(type_filter=type)
+    return get_rt_objs.rt_objs[type]
+
+
+def get_rt_vm(rt_id):
+    attrs, networks = get_rt_details(rt_id)
+    vm_obj = get_rt_objs()[rt_id]
+    vm = {
+        'rt_id': rt_id,
+        'hostname': vm_obj['name'],
+        'clustername': vm_obj['container_name'],
+        'osname': get_rt_attr(attrs, 'SW type'),
+        'comments': clean_html_tags(vm_obj['comment']),
+        'cores': get_rt_attr(attrs, 'CPU cores, No.'),
+        'datastore': get_rt_attr(attrs, 'Datastore'),
+        'ip_addresses': {},
+        }
+    for network in networks.itervalues():
+        vm['ip_addresses'][network['osif']] = \
+            network['addrinfo']['ip']
+    vvprint("Retrieved racktables VM record: %r" % vm)
+
+    return vm
+
+
 def get_racktables_list():
-    rt_objs = racktables().get_objects(type_filter=1504)
     rt_ids = {}
     rt_list = {}
-
-    for i, vm in rt_objs.iteritems():
-        hostname = vm['name']
-        rt_ids[hostname] = i
-        attrs, networks = get_rt_details(i)
-        vvprint("Name: %s\nID: %s\n" % (hostname, i))
-        rt_list[hostname] = {
-            'clustername': vm['container_name'],
-            'osname': get_rt_attr(attrs, 'SW type'),
-            'cores': get_rt_attr(attrs, 'CPU cores, No.'),
-            'datastore': get_rt_attr(attrs, 'Datastore'),
-            'ip_addresses': {}
-            }
-
-        for network in networks.itervalues():
-            rt_list[hostname]['ip_addresses'][network['osif']] = \
-                network['addrinfo']['ip']
-        vvprint("Retrieved racktables VM record for %s: %r"
-                % (hostname, rt_list[hostname]))
+    pool = ThreadPool(processes=4)
+    vmids = get_rt_objs().keys()
+    t0 = time.time()
+    vms = pool.map(get_rt_vm, vmids)
+    vvprint('Gathering RT list took %s seconds' % (time.time() - t0))
+    for vm in vms:
+        hostname = vm.pop('hostname')
+        rt_id = vm.pop('rt_id')
+        rt_list[hostname] = vm
+        rt_ids[hostname] = rt_id
+    pool.close()
 
     return (rt_ids, rt_list)
 
 
-def get_vm(vmpath):
+def get_vmw_comments(vm):
+    try:
+        return vm.properties.config.annotation
+    except AttributeError:
+        return ''
+
+
+def get_vmw_vm(vmpath):
     cur_vm = vsphere().get_vm_by_path(vmpath)
     hostname = cur_vm.get_property('hostname')
     if not hostname:
@@ -191,10 +237,14 @@ def get_vm(vmpath):
         'hostname': hostname,
         'clustername': get_vmw_cluster(vmpath),
         'osname': get_vmw_osname(cur_vm),
+        'comments': get_vmw_comments(cur_vm),
         'cores': str(cur_vm.get_property('num_cpu')),
         'datastore': get_vmw_datastore(cur_vm),
         'ip_addresses': {}
     }
+    # Command to get the vm's host is 'your_vm_obj.properties.runtime.host.name'
+    # Racktables API does not support multiple containers and will need that
+    # Added first
     networks = cur_vm.get_property('net')
     if networks:
         for eth, net in enumerate(networks):
@@ -218,12 +268,12 @@ def get_vm(vmpath):
 def get_vmw_list():
     vmw_list = {}
     vmw_paths = {}
-    pool = ThreadPool(processes=1)
+    pool = ThreadPool(processes=6)
     vmpaths = vsphere().get_registered_vms()
     get_vmw_cluster('')
     t0 = time.time()
-    vms = pool.map(get_vm, vmpaths)
-    print('took %s' % (time.time() - t0))
+    vms = pool.map(get_vmw_vm, vmpaths)
+    vvprint('Gathering VMW list took %s seconds' % (time.time() - t0))
     for vm in vms:
         hostname = vm.pop('hostname')
         path = vm.pop('path')
@@ -377,6 +427,7 @@ def create_racktables_obj(vm, vm_props):
                 rt_id,
                 object_name=vm,
                 object_type_id=1504,
+                object_comment=vm_props['comments'],
                 attrs=generate_attrs(vm, vm_props))
             if ret == '':
                 print("An error has occurred while updating the properties "
@@ -420,6 +471,10 @@ def main(args):
         if simple_check():
             exit(0)
 
+    if args.dryrun:
+        print("Dry-run mode enabled!")
+        args.verbose = 2
+
     # Read in list of VMs from Racktables
     vprint("Retrieving Racktables VM list...")
     rt_ids, rt_list = get_racktables_list()
@@ -440,19 +495,22 @@ def main(args):
                    % vm)
             vvprint("Racktables entry: %r" % rt_list[vm])
             vvprint("vSphere entry: %r" % vmw_list[vm])
-            create_racktables_obj(vm, vmw_list[vm])
+            if not args.dryrun:
+                create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Adding new objects...")
     for vm in diff.added():
         vprint("VM %s has been added. Creating object in racktables..." % vm)
-        create_racktables_obj(vm, vmw_list[vm])
+        if not args.dryrun:
+            create_racktables_obj(vm, vmw_list[vm])
 
     vvprint("\n")
     vprint("Deleting old objects...")
     for vm in diff.removed():
         vprint("VM %s has been removed. Deleting object in racktables..." % vm)
-        remove_racktables_obj(vm, rt_ids[vm], rt_list[vm])
+        if not args.dryrun:
+            remove_racktables_obj(vm, rt_ids[vm], rt_list[vm])
 
 
 if __name__ == '__main__':
@@ -463,5 +521,10 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--simple', help='Only perform a quick check '
                         'for new VMs, and not changed/deleted VMs',
                         action='store_true')
+    parser.add_argument('-d', '--dryrun', help='Do not apply changes to'
+                        'Racktables. Implies very verbose.',
+                        action='store_true')
+
     args = parser.parse_args()
+
     main(args)

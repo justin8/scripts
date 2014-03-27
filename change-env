@@ -1,0 +1,130 @@
+#!/bin/bash
+
+###########################################################
+#  Author: Justin Dray                                    #
+#  This script is to change the current machine to point  #
+#  DNS queries at a different environment to its default
+###########################################################
+
+if [[ $EUID != 0 ]]
+then
+	echo "You must run this script as root!"
+	exit 1
+fi
+
+usage()
+{
+	cat <<-EOF
+	usage: $(basename "$0") environment
+
+	VALID ENVIRONMENTS:
+	tstX	- Where X is a digit for function test environments
+	dr	- BNE2 DR environment
+	prod	- SYD2 Prod environment
+	off	- Turn off environment changes. (Currently the same as prod)
+	EOF
+	exit "$1"
+}
+
+backup_resolvconf()
+{
+	if grep 'PuppetMaster' /etc/resolv.conf
+	then
+		sed -i '/PuppetMaster/d' /etc/resolv.conf
+		cp /etc/resolv.conf /etc/.resolv.conf
+	fi
+}
+
+restore_resolvconf()
+{
+	if ! [[ -f /etc/.resolv.conf ]]
+	then
+		cp /etc/.resolv.conf /etc/resolv.conf
+	fi
+}
+
+check_env()
+{
+	if dig www.wotif.com | grep -q "$1"
+	then
+		echo -e '[\e[1;32mOK\e[00m]'
+	else
+		echo -e '[\e[1;31mFAILED\e[00m]'
+	fi
+}
+
+cleanup_vpns()
+{
+	# TODO: Make vpn connections get disabled when running any of the commands
+	echo "THIS SHOULD BE CLEANING UP ALL VPN CONNECTIONS! (BUT IT DOESN'T!)"
+	echo -n "Disconnecting from VPNs... "
+}
+
+dr()
+{
+	echo -n "Changing to DR environment... "
+	restore_resolvconf
+	sed -i '/^nameserver/s/^/#/g' /etc/resolv.conf
+	echo 'nameserver 10.9.200.188' >> /etc/resolv.conf
+	check_env '49.128.1.1'
+}
+
+prod()
+{
+	echo -n "Changing to prod environment... "
+	restore_resolvconf
+	check_env '202.125.108.1'
+}
+
+tst()
+{
+	echo "This cannot be tested yet!"
+	exit 0
+	if echo "$1" | grep -qE '^tst[0-9]+$'
+	then
+		env=$(echo "$1" | grep -oE '[0-9]+')
+		echo "Changing to test environment $env"
+		ipsec up "$1" > /dev/null
+		check_env "10.$((160 + env)).254.1"
+	else
+		echo -e '\e[1;31mPlease specify a valid environment\e[00m'
+		exit 1
+	fi
+}
+
+while getopts "h" OPTION
+do
+	case $OPTION in
+		h)
+			usage 0
+			;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [[ -n $2 ]]
+then
+	echo "You must specify only one environment!"
+	exit 1
+fi
+
+backup_resolvconf
+
+case $1 in
+	dr)
+		cleanup_vpns
+		dr
+		;;
+	prod|off)
+		cleanup_vpns
+		prod
+		;;
+	tst*)
+		cleanup_vpns
+		tst $1
+		;;
+	*)
+		echo -e "\e[1;31mPlease specify a valid environment\e[00m"
+		usage 1
+		;;
+esac
