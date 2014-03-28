@@ -23,4 +23,4 @@ fi
 
 source /opt/rh/python27/enable
 cd "$(dirname "$(readlink -f "$0")")"
-/root/.virtualenvs/vmware_to_racktables/bin/python2 vmware_to_racktables.py
+/root/.virtualenvs/vmware_to_racktables/bin/python2 vmware_to_racktables.py -vv
