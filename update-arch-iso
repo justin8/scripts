@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILDDIR="/srv/repo/iso/archiso"
+BUILDDIR="/srv/repo/iso/archiso/configs/releng"
 OUTPUT="/raid/shares/OSes/x86/Arch"
 SCRIPTS="/raid/server-files/scripts/iso-scripts"
 LOG="/var/log/$(basename "$0").log"
