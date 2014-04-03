@@ -23,8 +23,17 @@ DIR=`dirname $(readlink -f "$0")`
 
 clock () { echo -n "[`date +%H:%M:%S`] "; }
 function rsync-check {
-	[[ $1 == 0 ]] && echo `clock`"Rsync finished Successfully"
-	[[ $1 != 0 ]] && echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+	case $1 in
+		0)
+			echo `clock`"Rsync finished Successfully"
+			;;
+		24)
+			echo `clock`"Rsync finished with some ignorable errors (some files vanished before they could be transferred)"
+			;;
+		*)
+			echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+			;;
+	esac
 	return $1
 }
 
@@ -42,6 +51,13 @@ function remove-backup {
 			echo `clock`"Clean Up: Clean Up is disabled; $1 will NOT be deleted."
 		fi
 	fi
+}
+
+function exit-cleanup {
+	[[ -n $default_exclusions ]] && rm -rf $default_exclusions
+	[[ -n $package_inclusions ]] && rm -rf $package_inclusions
+	[[ -n $rsyncfailed ]] && rm -rf $backup_current
+	rm -f $LOCK
 }
 
 if echo $(basename "$0") | grep -qE  "^backup-[a-z][a-z][a-z]+$"
@@ -63,26 +79,34 @@ LOCK="/run/lock/backup-linux-incremental-$target"
 
 if [[ -z "$quiet" ]]
 then
-	exec > >(tee $LOG)
+	exec > >(tee $LOG) 2>&1
 else
-	exec > $LOG
+	exec > $LOG 2>&1
 fi
 
 exec 200>$LOCK
 if flock -xn 200; then
-	trap "rm $LOCK" SIGINT SIGTERM
+	trap exit-cleanup 0 SIGINT SIGTERM
 	
 	# Instance variables
 	backup_host_dir="$BACKUPDIR/$target"
 	backup_current="$backup_host_dir/$DATE"
-	exclude=$backup_host_dir/_exclude
-	exclude2=/tmp/$(basename "$0")_exclude
+	rsyncopts="-aHAX"
+	rsyncoptsfile=$backup_host_dir/_rsyncopts
+	custom_exclusions=$backup_host_dir/_exclude
+	default_exclusions=$(mktemp)
+	package_inclusions=$(mktemp)
 	cleanup=$backup_host_dir/_cleanup
 
 	if [ ! -f $exclude ]
 	then
 		echo "The '_exclude' file is required in the backup directory ($backup_host_dir)"
 		exit 1
+	fi
+
+	if [ -f $rsyncoptsfile ]
+	then
+		rsyncopts=$(head -n1 $rsyncoptsfile)
 	fi
 
 	if [ -e $backup_current ]
@@ -101,23 +125,44 @@ if flock -xn 200; then
 		sleep 10
 	done
 
-	cat << EOF > $exclude2
+	cat << EOF > $default_exclusions
 /dev/*
 /mnt/*
 /media/*
 /proc/*
 /run/*
 /sys/*
+/tmp/*
+/var/abs/*
 /var/cache/pacman/pkg/*
 /var/lib/mlocate/mlocate.db
+/var/tmp/*
+lost+found
 EOF
 
 	echo -e "--------| Starting backup of $target at `date +%Y-%m-%d\ %H:%M:%S` |--------"
+	OS=$(ssh $target 'grep "^NAME=" /etc/os-release | grep -Pio "\"[a-z ]+\"" | sed "s/\"//g"')
 
-	echo `clock`"Starting backup of $backup_host to $backup_current"
+	if [[ $OS == 'Arch Linux' ]]; then
+		echo `clock`"Supported OS detected..."
+		echo `clock`"Generating package inclusions list..."
+		tmpdb=$(mktemp)
+		tmpfs=$(mktemp)
+		ssh $target 'pacman -Qql | sort -u' > "$tmpdb"
+		ssh $target 'find /opt /usr ! -name lost+found \( -type d -printf "%p/\n" -o -print \) | sort' > "$tmpfs"
+		comm -23 "$tmpfs" "$tmpdb" > $package_inclusions
+		rm -rf $tmpdb $tmpfs
+
+		cat <<-EOF >> $default_exclusions
+			/usr
+			/opt
+		EOF
+	fi
+
+	echo `clock`"Starting backup of $target to $backup_current"
 	
 	backup_previous=$(ls -d1 $backup_host_dir/20* 2>/dev/null| sort -n | tail -1)
-	if [ $backup_previous ]
+	if [[ -n $backup_previous ]]
 	then
 		echo `clock`"Using $backup_previous for hardlinks"
 		inc=--link-dest=$backup_previous
@@ -126,25 +171,39 @@ EOF
 		inc=""
 	fi
 
-	rsync -aAXH --stats --delete --delete-excluded --exclude-from=$exclude \
-		--exclude-from=$exclude2 $inc $target:/ "$backup_current"
-	rsync-check $?
-	[[ $? != 0 ]] && rm -rf "$backup_current" || touch "$backup_current"
+	rsync $rsyncopts --stats --delete --delete-excluded \
+		--exclude-from=$custom_exclusions \
+		--exclude-from=$default_exclusions \
+		--rsync-path='nice rsync' $inc $target:/ "$backup_current"
+	rc=$?
+	rsync-check $rc
+
+	if [[ $rc != 0 ]] && [[ $rc != 24 ]]; then
+	       rsyncfailed=true
+	else
+	       touch "$backup_current"
+		if [[ $OS == 'Arch Linux' ]]; then
+			echo -n `clock`"Copying only non-package files for /usr & /opt"
+			while read file
+			do
+				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc $target:${file} "$backup_current"
+			done < $package_inclusions
+
+			echo -n `clock`"Generating package list..."
+			ssh $target 'pacman -Qqe' > "$backup_current/package-list"
+			check $?
+		fi
+	fi
 
 	echo -n `clock`"Syncing filesystems... "
 	sync; check $?
 
-	if [ -f $cleanup ]
-	then
-		echo `clock`"Clean Up: Starting..."
-		for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
-		do
-			remove-backup $i
-		done
-		echo `clock`"Clean Up: Completed"
-	else
-		echo `clock`"Clean Up: Disabled; skipping..."
-	fi
+	echo `clock`"Clean Up: Starting..."
+	for i in `find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30`
+	do
+		remove-backup $i
+	done
+	echo `clock`"Clean Up: Completed"
 else
 	echo "$DATE Lock file $LOCK present. Aborting"
 fi

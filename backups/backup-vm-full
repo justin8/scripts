@@ -1,10 +1,8 @@
 #!/bin/bash
-
 BACKUPDIR="/raid/shares/backups/Full/VMs"
 SOURCEDIR="/raid/virtual-machines"
 EXT="qcow2"
 DATE=`date +%Y-%m-%d`
-LOG=/var/log/$(basename $0).log
 DIR=`dirname $(readlink -f "${0}")`
 
 
@@ -13,14 +11,10 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
-exec > >(tee -a >(sed -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > ${LOG}))
-
 if [ $# -lt 1 ] ; then
 	echo "USAGE: $(basename $0) VM [VM]"
 	exit 1
 fi
-
-echo "" > ${LOG}
 
 for vm in $@
 do

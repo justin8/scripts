@@ -1,0 +1,103 @@
+#!/bin/bash
+#
+# backup-ftb-monster - hardlink based rsync incremental backup for ftb-monster
+#
+# Cleanup is enabled by having .cleanup file present in the backup location
+#
+
+
+# Static variables
+BACKUPDIR=/raid/shares/backups/misc/ftb-monster
+TARGET=/srv/ftb-monster-server
+DATE=$(date +%Y-%m-%d_%H.%M)
+
+# Initial checks
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+# Functions
+DIR=`dirname $(readlink -f "$0")`
+. $DIR/../lib/check
+
+
+clock () { echo -n "[`date +%H:%M:%S`] "; }
+function rsync-check {
+	case $1 in
+		0)
+			echo `clock`"Rsync finished Successfully"
+			;;
+		24)
+			echo `clock`"Rsync finished with some ignorable errors (some files vanished before they could be transferred)"
+			;;
+		*)
+			echo `clock`"Rsync failed with error code $1, backup for $DATE will be deleted."
+			;;
+	esac
+	return $1
+}
+
+function exit-cleanup {
+	[[ -n $rsyncfailed ]] && rm -rf $backup_current
+	rm -f $LOCK
+}
+
+LOG="/var/log/$(basename $0).log"
+LOCK="/run/lock/$(basename $0)"
+exec > $LOG 2>&1
+
+exec 200>$LOCK
+
+if flock -xn 200; then
+	trap exit-cleanup 0 SIGINT SIGTERM
+	
+	# Instance variables
+	backup_current="$BACKUPDIR/$DATE"
+	rsyncopts="-aHAX"
+	screenname=$(grep FTBUSER=ftb-monster /etc/conf.d/ftb-monster|cut -d'=' -f2)
+
+	if [ -e $backup_current ]
+	then
+		echo "$DATE A backup in $backup_current already exists! Please delete this folder first if you wish to create a new backup. Aborting!"
+		exit 0
+	fi
+
+	echo -e "--------| Starting backup at `date +%Y-%m-%d\ %H:%M:%S` |--------"
+
+	echo `clock`"Saving world..."
+	screen -S $screenname -X stuff 'say Backing up world...'
+	sleep 1
+	screen -S $screenname -X stuff 'save-all'
+
+	echo `clock`"Starting backup now..."
+	
+	backup_previous=$(ls -d1 $BACKUPDIR/20* 2>/dev/null| sort -n | tail -1)
+	if [ $backup_previous ]
+	then
+		echo `clock`"Using $backup_previous for hardlinks"
+		inc=--link-dest=$backup_previous
+	else
+		echo `clock`"No previous backup detected in $BACKUPDIR Creating new full backup set"
+		inc=""
+	fi
+
+	rsync $rsyncopts --rsync-path='nice rsync' --stats --delete --exclude=dynmap $inc $TARGET "$backup_current"
+	rc=$?
+	rsync-check $rc
+
+	if [[ $rc != 0 ]] && [[ $rc != 24 ]]; then
+		rsyncfailed=true
+	else
+		touch "$backup_current"
+	fi
+
+	echo -n `clock`"Syncing filesystems... "
+	sync; check $?
+
+	echo `clock`"Clean Up: Starting..."
+	find $BACKUPDIR/20* -maxdepth 0 -type d -mtime +2 -exec rm -rf {} \;
+	echo `clock`"Clean Up: Completed"
+else
+	echo "$DATE Lock file $LOCK present. Aborting"
+fi
