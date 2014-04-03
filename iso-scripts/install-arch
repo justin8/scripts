@@ -57,6 +57,10 @@ if [[ $(echo -n "$shortname" | wc -c) -gt 11 ]]
 then
 	echo "The specified hostname is too long! it must be under 11 characters long Aborting"
 	exit 1
+elif [[ -z $fqdn ]]
+then
+	echo "You must specify a hostname!"
+	exit 1
 fi
 
 exec 200>"$LOCK"
@@ -81,6 +85,8 @@ then
 
 		# Make a 200M sdX1 and the rest of the disk as sdX2
 		echo -e "o\nn\n\n\n\n+200M\nn\n\n\n\n\nw\n" | fdisk "$device"
+		wipefs -a "${device}1"
+		wipefs -a "${device}2"
 		mkfs.ext4 -m 0 -L "${shortname}-boot" "${device}1"
 		mkfs.btrfs -L "${shortname}-btrfs" "${device}2"
 
