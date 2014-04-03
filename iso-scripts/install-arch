@@ -69,7 +69,7 @@ then
 		then
 			echo -e "\e[31;1mThe specified device $device is not a block device!\e[0m"
 		else
-			echo "This will overwrite all data on device $device!"
+			echo -e "\e[31;1mThis will overwrite all data on device $device!\e[0m"
 		fi
 		echo -e "\e[31;1mPress enter if you're sure you want to continue anyway, or ctrl+c to exit.\e[0m"
 		read
