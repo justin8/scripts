@@ -35,10 +35,6 @@ clock () { echo -n "[$(date +%H:%M:%S)]"; }
 function check {
 	[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
 	[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details"
-	if [[ $1 != 0 ]] && [[ $2 == "quit" ]]
-	then
-		exit 1
-	fi
 }
 
 function usage {
@@ -114,7 +110,7 @@ fi
 
 if [[ -z "$target" ]]
 then
-	echo "Please specify a host to back up"
+	echo "Please specify a host to back up" | tee -a "/var/log/backup-linux-incremental.log"
 	exit 1
 fi
 
