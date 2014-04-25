@@ -1,0 +1,17 @@
+#!/bin/bash
+# Playlist location is relative to $home
+playlist=".config/mpd/playlists/Music.m3u"
+dir=$(pwd)
+tmp=$(mktemp)
+
+[[ "$1" == "--delete" ]] && delete="--delete"
+
+while read line
+do
+	if echo "$line" | grep -qv '^#'
+	then
+		echo "$line" >> "$tmp"
+	fi
+done < $HOME/$playlist
+rsync -aP $delete --files-from="$tmp" ~/Music/ "$dir/"
+rm -rf "$tmp"
