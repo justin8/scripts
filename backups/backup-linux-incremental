@@ -197,7 +197,7 @@ if flock -xn 200; then
 	rsync $rsyncopts --stats --delete --delete-excluded \
 		--exclude-from="$custom_exclusions" \
 		--exclude-from=<(echo "$default_exclusions") \
-		--rsync-path='nice rsync' "$inc" "$target:/" "$backup_current"
+		--rsync-path='nice rsync' $inc "$target:/" "$backup_current"
 	rc=$?
 	rsync_check $rc
 
@@ -209,7 +209,7 @@ if flock -xn 200; then
 			echo -n "$(clock) Copying only non-package files for /usr & /opt"
 			while read file
 			do
-				rsync ${rsyncopts} -R --rsync-path='nice rsync' "$inc" "$target:${file}" "$backup_current"
+				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
 			done < "$package_inclusions"
 
 			echo -n "$(clock) Generating package list..."
