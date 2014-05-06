@@ -171,13 +171,12 @@ if flock -xn 200; then
 		echo "$(clock) Supported OS detected..."
 		echo "$(clock) Generating package inclusions list..."
 		db=$(ssh "$target" 'pacman -Qql | sort -u')
-		fs=$(ssh "$target" 'find /opt /usr ! -name lost+found \( -type d -printf "%p/\n" -o -print \) | sort')
+		fs=$(ssh "$target" 'find /usr ! -name lost+found \( -type d -printf "%p/\n" -o -print \) | sort')
 		package_inclusions=$(comm -23 <(echo "$fs") <(echo "$db"))
 
 		default_exclusions=$(cat <<-EOF
 			$default_exclusions
 			/usr
-			/opt
 		EOF
 		)
 	fi
@@ -206,7 +205,7 @@ if flock -xn 200; then
 	else
 	       touch "$backup_current"
 		if [[ $OS == 'Arch Linux' ]]; then
-			echo -n "$(clock) Copying only non-package files for /usr & /opt"
+			echo -n "$(clock) Copying only non-package files for /usr"
 			while read file
 			do
 				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
