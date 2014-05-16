@@ -89,8 +89,12 @@ function remove-backup {
 }
 
 function exit_cleanup {
-	[[ -n $rsyncfailed ]] && rm -rf "$backup_current"
-	rm -f "$LOCK"
+	if [[ -z exit_cleanup_complete ]]
+	then
+		[[ -n $rsyncfailed ]] && rm -rf "$backup_current"
+		rm -f "$LOCK"
+		exit_cleanup_complete=1
+	fi
 }
 
 if echo $1 | grep -qE '\-(h|-help)?'
