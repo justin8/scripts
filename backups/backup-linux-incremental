@@ -203,11 +203,11 @@ if flock -xn 200; then
 		--rsync-path='nice rsync' $inc "$target:/" "$backup_current"
 	rc=$?
 	rsync_check $rc
+	touch "$backup_current"
 
 	if [[ $rc != 0 ]] && [[ $rc != 24 ]]; then
 	       rsyncfailed=true
 	else
-	       touch "$backup_current"
 		if [[ $OS == 'Arch Linux' ]]; then
 			echo -n "$(clock) Copying only non-package files for /usr"
 			while read file
@@ -230,6 +230,8 @@ if flock -xn 200; then
 		remove-backup "$backup"
 	done
 	echo "$(clock) Clean Up: Completed"
+
+	exit_cleanup
 	[[ -n $error ]] && exit "$error"
 else
 	echo "$DATE Lock file $LOCK present. Aborting"
