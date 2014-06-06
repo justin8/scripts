@@ -23,9 +23,9 @@ cp -L $SCRIPTS/* $BUILDDIR/root-image/usr/local/bin
 echo "Building ISO (this may take several minutes)..."
 ./build.sh -vo $OUTPUT 2>&1 
 rc=$?
+rm -rf $BUILDDIR/work
 [[ $rc != 0 ]] && echo "An error has occurred while creating the ISO" && exit $rc
 
-rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
 
 #echo "Updating PXE boot image on bloodwood..."
