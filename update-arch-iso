@@ -3,7 +3,6 @@
 BUILDDIR="/srv/repo/iso/archiso/configs/releng"
 OUTPUT="/raid/shares/OSes/x86/Arch"
 SCRIPTS="/raid/server-files/scripts/iso-scripts"
-LOG="/var/log/$(basename "$0").log"
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
@@ -22,8 +21,9 @@ mkdir -p $BUILDDIR/root-image/usr/local/bin
 rm -rf $BUILDDIR/root-image/usr/local/bin/*
 cp -L $SCRIPTS/* $BUILDDIR/root-image/usr/local/bin
 echo "Building ISO (this may take several minutes)..."
-./build.sh -vo $OUTPUT 2>&1 | tee "$LOG"
-[[ $? != 0 ]] && echo "An error has occurred while creating the ISO. Please view $LOG for more details" && exit 1
+./build.sh -vo $OUTPUT 2>&1 
+rc=$?
+[[ $rc != 0 ]] && echo "An error has occurred while creating the ISO" && exit $rc
 
 rm -rf $BUILDDIR/work
 chown -R downloads. $OUTPUT
