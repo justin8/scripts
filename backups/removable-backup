@@ -47,6 +47,7 @@ if flock -xn 200; then
 	sleep 5
 
 	echo "`clock` Mounting backup drive..."
+	mkdir -p "${BACKUPDIR}"
 	mount ${DEVICE} ${BACKUPDIR}
 	return=$?
 	if [ ${return} -ne 0 ]
