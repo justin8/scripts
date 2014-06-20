@@ -109,11 +109,11 @@ if flock -xn 200; then
 		if grep -q 'nvidia' /tmp/pacman-package-list
 		then
 			echo -e '\e[34;1mRe-installing nvidia packages first to avoid dependency issues\e[0m'
-			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S nvidia
+			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S nvidia
 		fi
 
 		echo -e '\e[34;1mInstalling all previously installed packages...\e[0m'
-		pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+		pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		if grep -q 'target not found' /tmp/pacman.log
 		then
 			echo -e '\e[31;1mThe following packages failed to be found in the defined repos. They will not be present after the restore. The list will be available at /missing-packages post-restore\e[0m'
@@ -123,7 +123,7 @@ if flock -xn 200; then
 				echo "$missing" | tee -a "$destination/missing-packages"
 				sed -i "/${missing}/d" /tmp/pacmange-package-list
 			done
-			pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+			pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		fi
 	fi
 
