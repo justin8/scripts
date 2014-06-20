@@ -14,8 +14,8 @@ fi
 clock () { echo -n "[$(date +%H:%M:%S)]"; }
 
 function check {
-	[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[00m]"
-	[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[00m]\nSee ${LOG} for more details"
+	[[ $1 == 0 ]] && echo -e "[\e[1;32mOK\e[0m]"
+	[[ $1 != 0 ]] && echo -e "[\e[1;31mFAILED\e[0m]"
 }
 
 function usage {
@@ -77,10 +77,11 @@ if flock -xn 200; then
 
 	if [[ -d $source/var/lib/pacman ]]
 	then
-		echo "Restoring packages..."
+		echo -e "\e[34;1mRestoring package indexes... \e[0m"
 		# Copy over pacman database so that it won't have to re-download package indexes
 		mkdir -p "$destination/var/lib/pacman/sync"
 		rsync -a "$source/var/lib/pacman/sync/"* "$destination/var/lib/pacman/sync"
+		check $?
 
 		if [[ -z $pkgcache ]]
 		then
@@ -89,6 +90,7 @@ if flock -xn 200; then
 		fi
 
 		# Mounting proc/sys to stop some errors while installing packages
+		echo -e '\e[34;1mInstalling base package group...\e[0m'
 		mkdir "$destination/"{dev,etc,proc,sys}
 		trap "umount $destination/dev $destination/proc $destination/sys" 0 SIGINT SIGTERM
 		mount -o bind /dev "$destination/dev"
@@ -96,21 +98,22 @@ if flock -xn 200; then
 		mount -o bind /sys "$destination/sys"
 		cp "$source/etc/pacman.conf" "$destination/etc"
 		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
-		echo -e '\e[34;1mInstalling base package group...\e[0m'
 		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S base
+
 		echo -e '\e[34;1mPreparing to install previously installed packages...\e[0m'
 		cp "$source/etc/pacman.conf" "$destination/etc"
 		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
 		pacman -Qqe --dbpath "$source/var/lib/pacman/" > /tmp/pacman-package-list
+		check $?
 
 		if grep -q 'nvidia' /tmp/pacman-package-list
 		then
 			echo -e '\e[34;1mRe-installing nvidia packages first to avoid dependency issues\e[0m'
-			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -Sy nvidia
+			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S nvidia
 		fi
 
 		echo -e '\e[34;1mInstalling all previously installed packages...\e[0m'
-		pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -Sy $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+		pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		if grep -q 'target not found' /tmp/pacman.log
 		then
 			echo -e '\e[31;1mThe following packages failed to be found in the defined repos. They will not be present after the restore. The list will be available at /missing-packages post-restore\e[0m'
@@ -120,11 +123,12 @@ if flock -xn 200; then
 				echo "$missing" | tee -a "$destination/missing-packages"
 				sed -i "/${missing}/d" /tmp/pacmange-package-list
 			done
-			pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -Sy $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+			pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		fi
 	fi
 
 	# rsync all the things
-	echo "Restoring backup files..."
-	rsync -aHAX "$source/" "$destination/"
+	echo -e "\e[34;1mRestoring backup files... \e[0m"
+	rsync -aHAX --exclude var/lib/pacman/local "$source/" "$destination/"
+	check $?
 fi
