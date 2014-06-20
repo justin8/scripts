@@ -3,7 +3,6 @@
 # restore-linux-incremental - Restore a backup made with the backup-linux-incremental script
 #
 
-DATE=$(date +%Y-%m-%d)
 LOCK="/var/run/$(basename "$0")"
 
 # Initial checks
@@ -101,8 +100,16 @@ if flock -xn 200; then
 		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S base
 		cp "$source/etc/pacman.conf" "$destination/etc"
 		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
-		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(pacman -Qq --dbpath "$source/var/lib/pacman/")
-
+		pacman -Qqe --dbpath "$source/var/lib/pacman/" > /tmp/pacman-package-list
+		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+		if grep -q 'target not found' /tmp/pacman.log
+		then
+			for missing in $(cat /tmp/pacman.log | grep 'target not found' | awk '{print $5}')
+			do
+				sed -i "/${missing}/d" /tmp/pacmange-package-list
+			done
+			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+		fi
 	fi
 
 	# rsync all the things
