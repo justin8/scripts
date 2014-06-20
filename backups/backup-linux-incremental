@@ -212,12 +212,8 @@ if flock -xn 200; then
 			echo -n "$(clock) Copying only non-package files for /usr"
 			while read file
 			do
-				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
+				rsync $rsyncopts -R --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
 			done < "$package_inclusions"
-
-			echo -n "$(clock) Generating package list..."
-			ssh "$target" 'pacman -Qqe' > "$backup_current/package-list"
-			check $?
 		fi
 	fi
 
@@ -225,7 +221,7 @@ if flock -xn 200; then
 	sync; check $?
 
 	echo "$(clock) Clean Up: Starting..."
-	for backup in $(find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30)
+	for backup in $(find ${backup_host_dir}/20* -maxdepth 0 -type d -mtime +30)
 	do
 		remove-backup "$backup"
 	done
