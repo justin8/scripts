@@ -96,19 +96,23 @@ if flock -xn 200; then
 		mount -o bind /sys "$destination/sys"
 		cp "$source/etc/pacman.conf" "$destination/etc"
 		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
-		# install packages, this should use the cache and not update any database entries; just pure re-install
+		echo -e '\e[34;1mInstalling base package group...\e[0m'
 		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S base
+		echo -e '\e[34;1mInstalling all previously installed packages\e[0m'
 		cp "$source/etc/pacman.conf" "$destination/etc"
 		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
 		pacman -Qqe --dbpath "$source/var/lib/pacman/" > /tmp/pacman-package-list
-		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -Sy $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		if grep -q 'target not found' /tmp/pacman.log
 		then
+			echo -e '\e[31;1mThe following packages failed to be found in the defined repos. They will not be present after the restore. The list will be available at /missing-packages post-restore\e[0m'
+			echo "" > "$destination/missing-packages"
 			for missing in $(cat /tmp/pacman.log | grep 'target not found' | awk '{print $5}')
 			do
+				echo "$missing" | tee -a "$destination/missing-packages"
 				sed -i "/${missing}/d" /tmp/pacmange-package-list
 			done
-			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+			pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -Sy $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
 		fi
 	fi
 
