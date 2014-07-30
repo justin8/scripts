@@ -1,0 +1,33 @@
+#!/bin/bash
+
+case $1 in
+	test)
+		envs[0]="test" ;;
+	tstx)
+		envs[0]="tstx" ;;
+	*)
+		envs[0]="bne2"
+		envs[1]="uat1"
+		envs[2]="syd2"
+		;;
+esac
+
+for env in "${envs[@]}"
+do
+	cd "$HOME/Downloads/rpms"
+	for rel in *
+	do
+		if [[ -n $(find "$rel" -iname '*.rpm') ]]
+		then
+			if [[ -n $(ls "$rel/") ]]; then
+				if [[ $env == test ]]; then
+					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum.test/$rel/incoming"
+				elif [[ $env == tstx ]]; then
+					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.test:/repo/yum.tstx/$rel/incoming"
+				else
+					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum/$rel/incoming"
+				fi
+			fi
+		fi
+	done
+done
