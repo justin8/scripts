@@ -21,11 +21,11 @@ do
 		then
 			if [[ -n $(ls "$rel/") ]]; then
 				if [[ $env == test ]]; then
-					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum.test/$rel/incoming"
+					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum.test/$rel/incoming"
 				elif [[ $env == tstx ]]; then
-					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.test:/repo/yum.tstx/$rel/incoming"
+					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.test:/repo/yum.tstx/$rel/incoming"
 				else
-					echo scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum/$rel/incoming"
+					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum/$rel/incoming"
 				fi
 			fi
 		fi
