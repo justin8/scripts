@@ -47,20 +47,16 @@ if flock -xn 200; then
 	sleep 5
 
 	echo "`clock` Mounting backup drive..."
+	mkdir -p "${BACKUPDIR}"
 	mount ${DEVICE} ${BACKUPDIR}
 	return=$?
-	if [ ${return} -ne 0 ]
+	if [[ ${return} -ne 0 ]]
 	then
-		if [ ${return} -eq 32 ]
-		then
-			echo "`clock` Drive is already mounted. Continuing backup..."
-		else
-			echo "`clock` Mounting failed; aborting backup"
-			exit 1
-		fi
+		echo "`clock` Mounting failed; aborting backup"
+		exit 1
 	fi
 
-	if [ -f /tmp/donotbackup ]
+	if [[ -f /tmp/donotbackup ]]
 	then
 		echo "`clock` Skipping backup due to /tmp/donotbackup existing"
 		exit 1

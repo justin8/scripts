@@ -21,9 +21,13 @@ function check {
 
 function usage {
 	cat <<-EOF
-	usage: $(basename "$(readlink -f "$0")") [options] backup-source destination
+	usage: $(basename "$(readlink -f "$0")") [options] -[rl] backup-source destination
+
+	Either a remote or a local source must be specified. (But not both)
 
 	OPTIONS:
+	-l  Local: Used to specify a local restore source (i.e. -l /backups/foo)
+	-r  Remote: User to specify a remote resotre source using SSH notation (i.e. -r bar:/backups/baz)
 	-p  Package cache: Specify a different package cache than the host machine's
 
 	This script will restore a linux host to the specified destination
@@ -34,18 +38,19 @@ function usage {
 	EOF
 }
 
-while getopts ":hp:" OPTION
+while getopts ":hp:r:l:" OPTION
 do
 	case $OPTION in
-		h) usage; exit 0;;
+		h) usage; exit 0 ;;
 		p) pkgcache=$OPTIND ;;
+		r) remote=$OPTIND ;;
+		l) local=$OPTIND ;;
 		?) usage; exit 1;;
 	esac
 done
 shift $(( OPTIND -1 ))
 
-source=$1
-destination=$2
+destination=$1
 
 if [[ -z source ]] || [[ -z $destination ]]
 then
@@ -54,10 +59,26 @@ then
 	exit 1
 fi
 
-if [[ ! -d $source ]]
+if [[ -n $remote ]]
 then
-	echo -e "\e[31;1mBackup source does not exist! Aborting\e[0m"
-	exit 1
+	mountpoint=$(mktemp -d)
+	sshfs "$remote" "$mountpoint"
+	if [[ $? != 0 ]]
+	then
+		echo -e "\e[31;1mAn error has occurred during mounting of the remote source! Aborting\e[0m"
+		exit 1
+	fi
+	source=$mountpoint
+elif [[ -n $local ]]
+then
+	# Local backup source
+	if [[ ! -d $local ]]
+	then
+		echo -e "\e[31;1mBackup source does not exist! Aborting\e[0m"
+		exit 1
+	fi
+
+	source=$local
 fi
 
 if [[ ! -d $destination ]]
@@ -66,46 +87,70 @@ then
 	exit 1
 fi
 
-exec 200>"$LOCK"
-if flock -xn 200; then
-	echo -e "               \e[31;1m***** WARNING! *****\e[0m"
-	echo "This will remove all files from the destination ($destination)"
-	echo "Press enter to continue (or ctrl+c to exit)"
-	read
+echo -e "               \e[31;1m***** WARNING! *****\e[0m"
+echo "This will remove all files from the destination ($destination)"
+echo "Press enter to continue (or ctrl+c to exit)"
+read
 
-	# Test this with /boot as a sub-mount with existing files
-	rm -rf "$destination/"*
+# Test this with /boot as a sub-mount with existing files
+rm -rf "$destination/"*
 
-	if [[ -d $source/var/lib/pacman ]]
+if [[ -d $source/var/lib/pacman ]]
+then
+	echo -e "\e[34;1mRestoring package indexes... \e[0m"
+	# Copy over pacman database so that it won't have to re-download package indexes
+	mkdir -p "$destination/var/lib/pacman/sync"
+	rsync -a "$source/var/lib/pacman/sync/"* "$destination/var/lib/pacman/sync"
+	check $?
+
+	if [[ -z $pkgcache ]]
 	then
-		echo "Restoring packages..."
-		# Copy over pacman database so that it won't have to re-download package indexes
-		mkdir -p "$destination/var/lib/pacman/sync"
-		rsync -a "$source/var/lib/pacman/sync/"* "$destination/var/lib/pacman/sync"
-
-		if [[ -z $pkgcache ]]
-		then
-			# Specify they host's package cache as default
-			pkgcache="/var/cache/pacman/pkg"
-		fi
-
-		# Mounting proc/sys to stop some errors while installing packages
-		mkdir "$destination/"{dev,etc,proc,sys}
-		trap "umount $destination/dev $destination/proc $destination/sys" 0 SIGINT SIGTERM
-		mount -o bind /dev "$destination/dev"
-		mount -o bind /proc "$destination/proc"
-		mount -o bind /sys "$destination/sys"
-		cp "$source/etc/pacman.conf" "$destination/etc"
-		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
-		# install packages, this should use the cache and not update any database entries; just pure re-install
-		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S base
-		cp "$source/etc/pacman.conf" "$destination/etc"
-		sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
-		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --dbpath="$destination/var/lib/pacman" --force -S $(pacman -Qq --dbpath "$source/var/lib/pacman/")
-
+		# Specify they host's package cache as default
+		pkgcache="/var/cache/pacman/pkg"
 	fi
 
-	# rsync all the things
-	echo "Restoring backup files..."
-	rsync -aHAX "$source/" "$destination/"
+	# Mounting proc/sys to stop some errors while installing packages
+	echo -e '\e[34;1mInstalling base package group...\e[0m'
+	mkdir "$destination/"{dev,etc,proc,sys}
+	trap "umount $destination/dev $destination/proc $destination/sys" 0 SIGINT SIGTERM
+	mount -o bind /dev "$destination/dev"
+	mount -o bind /proc "$destination/proc"
+	mount -o bind /sys "$destination/sys"
+	cp "$source/etc/pacman.conf" "$destination/etc"
+	sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
+	pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S base
+
+	echo -e '\e[34;1mPreparing to install previously installed packages...\e[0m'
+	cp "$source/etc/pacman.conf" "$destination/etc"
+	sed -i '/IgnorePkg/d' "$destination/etc/pacman.conf"
+	pacman -Qqe --dbpath "$source/var/lib/pacman/" > /tmp/pacman-package-list
+	check $?
+
+	if grep -q 'nvidia' /tmp/pacman-package-list
+	then
+		# TODO: This will need fixes for optimus configurations since it must be installed before nvidia packages
+		echo -e '\e[34;1mRe-installing nvidia packages first to avoid dependency issues\e[0m'
+		pacman --noconfirm --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S nvidia
+	fi
+
+	echo -e '\e[34;1mInstalling all previously installed packages...\e[0m'
+	pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+	if grep -q 'target not found' /tmp/pacman.log
+	then
+		echo -e '\e[31;1mThe following packages failed to be found in the defined repos. They will not be present after the restore. The list will be available at /missing-packages post-restore\e[0m'
+		echo "" > "$destination/missing-packages"
+		for missing in $(cat /tmp/pacman.log | grep 'target not found' | awk '{print $5}')
+		do
+			echo "$missing" | tee -a "$destination/missing-packages"
+			sed -i "/${missing}/d" /tmp/pacmange-package-list
+		done
+		pacman --noconfirm --needed --root "$destination" --config "$destination/etc/pacman.conf" --cachedir "$pkgcache" --force -S $(cat /tmp/pacman-package-list) 2>&1 | tee /tmp/pacman.log
+	fi
 fi
+
+# rsync all the things
+echo -e "\e[34;1mRestoring backup files... \e[0m"
+rsync -aHAX --exclude var/lib/pacman/local "$source/" "$destination/"
+check $?
+
+[[ -n $mountpoint ]] && umount $mountpoint

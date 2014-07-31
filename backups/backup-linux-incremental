@@ -174,10 +174,9 @@ if flock -xn 200; then
 	if [[ $OS == 'Arch Linux' ]]; then
 		echo "$(clock) Supported OS detected..."
 		echo "$(clock) Generating package inclusions list..."
-		db=$(ssh "$target" 'pacman -Qql | sort -u')
 		fs=$(ssh "$target" 'find /usr ! -name lost+found \( -type d -printf "%p/\n" -o -print \) | sort')
-		package_inclusions=$(comm -23 <(echo "$fs") <(echo "$db"))
-
+		db=$(ssh "$target" "pacman -Qql | grep '^/usr' | sort -u")
+		package_inclusions=$(comm -23 <(echo "$fs") <(echo "$db") | grep -v '/$')
 		default_exclusions=$(cat <<-EOF
 			$default_exclusions
 			/usr
@@ -209,15 +208,12 @@ if flock -xn 200; then
 	       rsyncfailed=true
 	else
 		if [[ $OS == 'Arch Linux' ]]; then
-			echo -n "$(clock) Copying only non-package files for /usr"
-			while read file
+			echo "$(clock) Copying only non-package files for /usr..."
+			for file in $package_inclusions
 			do
-				rsync ${rsyncopts} -R --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
-			done < "$package_inclusions"
-
-			echo -n "$(clock) Generating package list..."
-			ssh "$target" 'pacman -Qqe' > "$backup_current/package-list"
-			check $?
+				# TODO: Ignore exlusion lists?
+				rsync ${rsyncopts} -Rpltgo --rsync-path='nice rsync' $inc "$target:${file}" "$backup_current"
+			done 
 		fi
 	fi
 
@@ -225,7 +221,7 @@ if flock -xn 200; then
 	sync; check $?
 
 	echo "$(clock) Clean Up: Starting..."
-	for backup in $(find $backup_host_dir/20* -maxdepth 0 -type d -mtime +30)
+	for backup in $(find ${backup_host_dir}/20* -maxdepth 0 -type d -mtime +30)
 	do
 		remove-backup "$backup"
 	done
