@@ -89,7 +89,7 @@ function remove-backup {
 }
 
 function exit_cleanup {
-	if [[ -z exit_cleanup_complete ]]
+	if [[ -z $exit_cleanup_complete ]]
 	then
 		[[ -n $rsyncfailed ]] && rm -rf "$backup_current"
 		rm -f "$LOCK"
