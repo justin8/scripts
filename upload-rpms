@@ -20,13 +20,11 @@ do
 		if [[ -n $(find "$rel" -iname '*.rpm') ]]
 		then
 			if [[ -n $(ls "$rel/") ]]; then
-				if [[ $env == test ]]; then
-					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum.test/$rel/incoming"
-				elif [[ $env == tstx ]]; then
-					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.test:/repo/yum.tstx/$rel/incoming"
-				else
-					scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum/$rel/incoming"
-				fi
+				case $env in
+					test) scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum.test/$rel/incoming" ;;
+					tstx) scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.test:/repo/yum.tstx/$rel/incoming" ;;
+					*)    scp "$HOME/Downloads/rpms/$rel/"*.rpm "yum.$env:/repo/yum/$rel/incoming" ;;
+				esac
 			fi
 		fi
 	done
