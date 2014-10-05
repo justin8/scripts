@@ -57,13 +57,13 @@ function rsync_check {
 			;;
 		23)
 			echo "$(clock) Rsync finished with some possibly ignorable errors (some files/attrs were not transferred). Possibly a mounted chroot sys/proc?"
-			error=$rc
 			;;
 		24)
 			echo "$(clock) Rsync finished with some ignorable errors (some files vanished before they could be transferred)"
 			;;
 		*)
 			echo "$(clock) Rsync failed with error code $rc, backup for $DATE will be deleted."
+			error=$rc
 			;;
 	esac
 	return "$rc"
@@ -95,6 +95,7 @@ function exit_cleanup {
 		rm -f "$LOCK"
 		exit_cleanup_complete=1
 	fi
+	[[ -n $error ]] && exit "$error"
 }
 
 if echo $1 | grep -qE '\-(h|-help)?'
@@ -221,14 +222,17 @@ if flock -xn 200; then
 	sync; check $?
 
 	echo "$(clock) Clean Up: Starting..."
-	for backup in $(find ${backup_host_dir}/20* -maxdepth 0 -type d -mtime +30)
-	do
-		remove-backup "$backup"
-	done
+	backups=$(find "${backup_host_dir}" -maxdepth 1 -type d -iname '20*' | sort)
+	backup_count=$(echo "$backups" | wc -l)
+	if [[ $backup_count -gt 30 ]]
+	then
+		no_to_remove=$(( count - 30 ))
+		for backup in $(echo backups | head -n $no_to_remove)
+		do
+			remove-backup "$backup"
+		done
+	fi
 	echo "$(clock) Clean Up: Completed"
-
-	exit_cleanup
-	[[ -n $error ]] && exit "$error"
 else
 	echo "$DATE Lock file $LOCK present. Aborting"
 fi
