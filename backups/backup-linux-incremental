@@ -20,6 +20,7 @@ default_exclusions="/dev/*
 /var/abs/*
 /var/cache/pacman/pkg/*
 /var/lib/mlocate/mlocate.db
+/var/lib/docker/*
 /var/log/*
 /var/tmp/*
 lost+found"
