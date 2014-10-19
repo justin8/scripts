@@ -14,7 +14,7 @@ fi
 
 tempdir="$dir/temp"
 outdir="$dir/complete"
-indir="$dir/to-be-completed"
+indir="$dir/to-be-encoded"
 faildir="$dir/failed"
 LOCK="$dir/.lock"
 
