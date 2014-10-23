@@ -1,0 +1,36 @@
+#!/bin/bash
+packagelist=/tmp/dlepel6.list
+mirror='http://dl.fedoraproject.org/pub/epel/6/x86_64/'
+
+if [[ -z $1 ]]
+then
+	echo 'You must specify at least one package name! (or basic glob). (this is case insensitive)'
+	exit
+fi
+
+if [[ ! -f $packagelist ]]
+then
+	curl "$mirror" > $packagelist
+fi
+
+dllist=''
+for q in $@
+do
+	unset rpm
+	if echo $q | grep -q '[0-9]$'
+	then
+		rpm=$(grep 'href' "$packagelist" | sed 's/^.*href=.*>\(.*\)<.*/\1/g' | grep -i "$q" | tail -n 1)
+	else
+		rpm=$(grep 'href' "$packagelist" | sed 's/^.*href=.*>\(.*\)<.*/\1/g' | grep -i "$q-[0-9]" | tail -n 1)
+	fi
+
+	if [[ -n $rpm ]]
+	then
+		echo "Found '$rpm' for glob '$q'."
+		dllist+=" -O ${mirror}${rpm}"
+	else
+		echo -e "\e[31;1mNo RPM found for the glob '$q'!\e[0m"
+	fi
+done
+
+curl $dllist
