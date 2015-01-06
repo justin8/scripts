@@ -226,7 +226,7 @@ if flock -xn 200; then
 	backup_count=$(echo "$backups" | wc -l)
 	if [[ $backup_count -gt 30 ]]
 	then
-		no_to_remove=$(( count - 30 ))
+		no_to_remove=$(( backup_count - 30 ))
 		for backup in $(echo backups | head -n $no_to_remove)
 		do
 			remove-backup "$backup"
