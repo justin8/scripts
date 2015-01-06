@@ -32,6 +32,4 @@ backup_host_dir="$BACKUPDIR/$target"
 if ! (find ${backup_host_dir} -maxdepth 1 -mtime -7 -type d|grep -v "${backup_host_dir}$" > /dev/null)
 then
 	echo "No backups have been found for $target in the past 7 days!"
-	exit 1
 fi
-exit 0
