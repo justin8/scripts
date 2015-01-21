@@ -13,8 +13,10 @@ fi
 echo "Preparing build environment..."
 cd $BUILDDIR
 rm -rf $BUILDDIR/work
+git fetch --all
 git reset --hard
-git pull
+git checkout master
+git reset --hard origin/master
 
 chown -R root. $BUILDDIR
 mkdir -p $BUILDDIR/root-image/usr/local/bin
