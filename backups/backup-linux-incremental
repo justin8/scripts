@@ -6,7 +6,7 @@
 #
 
 # Static variables
-BACKUPDIR=/raid/shares/backups/Incremental
+BACKUPDIR=/storage/shares/backups/Incremental
 DATE=$(date +%Y-%m-%d)
 
 default_exclusions="/dev/*

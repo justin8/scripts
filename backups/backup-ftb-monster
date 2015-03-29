@@ -7,7 +7,7 @@
 
 
 # Static variables
-BACKUPDIR=/raid/shares/backups/misc/ftb-monster
+BACKUPDIR=/storage/shares/backups/misc/ftb-monster
 TARGET=/srv/ftb-monster-server
 DATE=$(date +%Y-%m-%d_%H.%M)
 

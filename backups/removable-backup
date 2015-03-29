@@ -64,13 +64,13 @@ if flock -xn 200; then
 
 	echo "`clock` Rsync-ing everything..."
 	echo "`clock` Backing up server-files"
-	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /raid/server-files "${BACKUPDIR}"
+	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /storage/server-files "${BACKUPDIR}"
 	echo "`clock` Backing up home"
-	rsync -avAXH --delete-before --delete-excluded /raid/home ${BACKUPDIR}
+	rsync -avAXH --delete-before --delete-excluded /storage/home ${BACKUPDIR}
 	echo "`clock` Backing up shares"
-	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /raid/shares "${BACKUPDIR}"
+	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /storage/shares "${BACKUPDIR}"
 	echo "`clock` Backing up latest abachi backup"
-	rsync -avAXH --delete-before $(ls -d1 /raid/shares/backups/Incremental/abachi/20* | tail -n 1) "${BACKUPDIR}/abachi"
+	rsync -avAXH --delete-before $(ls -d1 /storage/shares/backups/Incremental/abachi/20* | tail -n 1) "${BACKUPDIR}/abachi"
 
 	echo "`clock` Syncing filesystems..."
 	sync

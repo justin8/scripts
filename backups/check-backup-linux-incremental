@@ -5,7 +5,7 @@
 #
 
 # Static variables
-BACKUPDIR=/raid/shares/backups/Incremental
+BACKUPDIR=/storage/shares/backups/Incremental
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then

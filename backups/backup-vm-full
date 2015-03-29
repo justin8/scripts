@@ -1,6 +1,6 @@
 #!/bin/bash
-BACKUPDIR="/raid/shares/backups/Full/VMs"
-SOURCEDIR="/raid/virtual-machines"
+BACKUPDIR="/storage/shares/backups/Full/VMs"
+SOURCEDIR="/storage/virtual-machines"
 EXT="qcow2"
 DATE=`date +%Y-%m-%d`
 DIR=`dirname $(readlink -f "${0}")`

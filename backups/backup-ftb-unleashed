@@ -7,7 +7,7 @@
 
 
 # Static variables
-BACKUPDIR=/raid/shares/backups/misc/ftb-unleashed
+BACKUPDIR=/storage/shares/backups/misc/ftb-unleashed
 TARGET=/srv/ftb-unleashed-server
 DATE=$(date +%Y-%m-%d_%H.%M)
 

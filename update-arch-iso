@@ -1,8 +1,8 @@
 #!/bin/bash
 
 BUILDDIR="/srv/archiso/configs/releng"
-OUTPUT="/raid/shares/OSes/x86/Arch"
-SCRIPTS="/raid/server-files/scripts/iso-scripts"
+OUTPUT="/storage/shares/OSes/x86/Arch"
+SCRIPTS="/storage/server-files/scripts/iso-scripts"
 
 # Initial checks
 if [[ $EUID -ne 0 ]]; then
