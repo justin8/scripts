@@ -2,7 +2,6 @@
 
 BACKUPDIR="/mnt/backup"
 LOG="/var/log/$(basename "$0").log"
-DATE=`date +%Y-%m-%d`
 DEVICE="/dev/disk/by-label/backup"
 
 #Exclusion list (for shares only):
@@ -13,14 +12,6 @@ documentaries
 game-installers/Windows/steamapps
 movies
 tv
-EOF
-
-cat << EOF > /tmp/$(basename "$0")-server-files-exclusion-list.txt
-.abachi.swap
-downloads
-system/chroot
-system/var/lib/jenkins/aur-mirror
-XBMC-Thumbnails
 EOF
 
 if [[ $EUID -ne 0 ]]; then
@@ -36,52 +27,50 @@ fi
 
 clock () { echo -n "[$(date +'%d/%m/%y %H:%M:%S')] "; }
 
-LOCK=/run/lock/`basename $0`
-exec 200>${LOCK}
+LOCK="/run/lock/$(basename "$0")"
+exec 200>"${LOCK}"
 if flock -xn 200; then
 
-	echo "" > ${LOG}
-	exec > >(tee $LOG) 2>&1
+	echo "" > "${LOG}"
+	exec > >(tee "$LOG") 2>&1
 
-	echo "`clock` Starting in 5 seconds..."
+	echo "$(clock) Starting in 5 seconds..."
 	sleep 5
 
-	echo "`clock` Mounting backup drive..."
+	echo "$(clock) Mounting backup drive..."
 	mkdir -p "${BACKUPDIR}"
-	mount ${DEVICE} ${BACKUPDIR}
+	mount "${DEVICE}" "${BACKUPDIR}"
 	return=$?
 	if [[ ${return} -ne 0 ]]
 	then
-		echo "`clock` Mounting failed; aborting backup"
+		echo "$(clock) Mounting failed; aborting backup"
 		exit 1
 	fi
 
 	if [[ -f /tmp/donotbackup ]]
 	then
-		echo "`clock` Skipping backup due to /tmp/donotbackup existing"
+		echo "$(clock) Skipping backup due to /tmp/donotbackup existing"
 		exit 1
 	fi
 
-	echo "`clock` Rsync-ing everything..."
-	echo "`clock` Backing up server-files"
-	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-server-files-exclusion-list.txt" /storage/server-files "${BACKUPDIR}"
-	echo "`clock` Backing up home"
-	rsync -avAXH --delete-before --delete-excluded /storage/home ${BACKUPDIR}
-	echo "`clock` Backing up shares"
+	echo "$(clock) Rsync-ing everything..."
+	echo "$(clock) Backing up home"
+	rsync -avAXH --delete-before --delete-excluded /home ${BACKUPDIR}
+	echo "$(clock) Backing up shares"
 	rsync -avAXH --delete-before --delete-excluded --exclude-from="/tmp/$(basename "$0")-shares-exclusion-list.txt" /storage/shares "${BACKUPDIR}"
-	echo "`clock` Backing up latest abachi backup"
-	rsync -avAXH --delete-before $(ls -d1 /storage/shares/backups/Incremental/abachi/20* | tail -n 1) "${BACKUPDIR}/abachi"
+	#echo "$(clock) Backing up latest abachi backup"
+	#rsync -avAXH --delete-before $(ls -d1 /storage/shares/backups/Incremental/abachi/20* | tail -n 1) "${BACKUPDIR}/abachi"
 
-	echo "`clock` Syncing filesystems..."
+	echo "$(clock) Syncing filesystems..."
 	sync
 
 	if command -v btrfs > /dev/null && command -v bedup > /dev/null && [[ $(stat -f -c %T "${BACKUPDIR}") == "btrfs" ]]
 	then
-		echo "`clock` Deduplicating filesystem..."
+		echo "$(clock) Deduplicating filesystem..."
 		bedup dedup "${BACKUPDIR}"
 	fi
 
-	echo "`clock` Backup completed. Unmounting drive and cleaning up..."
+	echo "$(clock) Backup completed. Unmounting drive and cleaning up..."
 	while lsof $BACKUPDIR > /dev/null || lsof $DEVICE > /dev/null
 	do
 		sleep 1
@@ -89,4 +78,7 @@ if flock -xn 200; then
 	umount -f ${BACKUPDIR}
 	rm -f ${DEVICE}
 	rm "/tmp/$(basename "$0")-shares-exclusion-list.txt" "/tmp/$(basename "$0")-server-files-exclusion-list.txt"
+
+	# Wait inside flock after removing file; other processes should end before this
+	sleep 3
 fi
