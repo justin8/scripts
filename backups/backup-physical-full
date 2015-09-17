@@ -85,7 +85,7 @@ mkdir -p $DEST && rm -rf $DEST/*
 check $?
 
 echo $(date) > $LOG
-exec > >(tee $LOG)
+exec &> >(tee -a $LOG)
 
 echo -n "Backing up MBR... "
 dd if=$DEVICE of=$DEST/mbr.bin bs=512 count=1 > /tmp/ddlog 2>&1
