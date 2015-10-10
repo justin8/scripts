@@ -31,8 +31,8 @@ LOCK="/run/lock/$(basename "$0")"
 exec 200>"${LOCK}"
 if flock -xn 200; then
 
-	echo "" > "${LOG}"
-	exec > >(tee "$LOG") 2>&1
+	echo "" > ${LOG}
+	exec &> >(tee $LOG)
 
 	echo "$(clock) Starting in 5 seconds..."
 	sleep 5

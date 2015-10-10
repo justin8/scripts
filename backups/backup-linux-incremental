@@ -125,9 +125,9 @@ LOCK="/run/lock/backup-linux-incremental-$target"
 
 if [[ -z "$quiet" ]]
 then
-	exec > >(tee -a "$LOG") 2>&1
+	exec &> >(tee -a "$LOG")
 else
-	exec >> "$LOG" 2>&1
+	exec &>> "$LOG"
 fi
 
 exec 200>"$LOCK"

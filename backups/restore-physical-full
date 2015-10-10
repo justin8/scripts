@@ -74,7 +74,7 @@ rm -rf $cred
 if [[ $rc != 0 ]]; then cat /tmp/mntlog;rm /tmp/mntlog; exit 1;fi
 
 echo $(date) > $LOG
-exec > >(tee $LOG)
+exec &> >(tee $LOG)
 
 echo -n "Removing any old partition tables... "
 parted -s $DEVICE mklabel msdos
