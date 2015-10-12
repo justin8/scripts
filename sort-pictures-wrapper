@@ -1,0 +1,49 @@
+#!/bin/bash
+LOG="sort-pictures-wrapper.log"
+folder='./sort'
+cd "$(dirname $(readlink -f $0))"
+
+# trap this?
+function logbreak {
+	echo -------------------------------------------------------------------------------------------
+}
+
+exec >> $LOG 2>&1
+set -e
+
+if echo $1 | grep -q bts
+then
+	exit 0
+fi
+
+for i in {1..30}
+do
+	if [[ $(find $folder -iname '*.bts') != '' ]]
+	then
+		exit 0
+	fi
+	sleep 1
+done
+
+date +%Y-%M-%d
+
+if [[ $(find $folder -type f) == '' ]]
+then
+	echo "No files found"
+	logbreak
+	exit 0
+fi
+
+if [[ -d /tmp/scripts ]]; then
+	git clone https://github.com/justin8/scripts /tmp/scripts
+else
+	git -C /tmp/scripts reset --hard
+	git -C /tmp/scripts checkout master
+	git -C /tmp/scripts pull
+fi
+sed -i 's|PICTURESDIR=.*|PICTURESDIR=/storage/shares/pictures|' /tmp/scripts/sort-pictures
+sed -i '/zenity/d' /tmp/scripts/sort-pictures
+chown -R downloads. .
+chmod -R g+w .
+bash -x /tmp/scripts/sort-pictures $folder/* 2>&1 | grep -E '(echo|mv)'
+logbreak
