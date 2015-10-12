@@ -34,7 +34,7 @@ if [[ -n $PATCH ]]; then
 	echo "Branch: $BRANCH"
 
 	git checkout -b "$BRANCH" master
-	git commit -p
+	git commit -p -m "$MESSAGE"
 else
 	echo "Message: $MESSAGE"
 	echo "Branch: $BRANCH"
