@@ -3,12 +3,11 @@ set -e
 
 usage() {
 	cat <<-EOF
-	Usage: $(basename "$0") (-p branch-name|commit-message)
+	Usage: $(basename "$0") [-p] commit-message
 
-	Using the '-p' option will use git patch mode and the branch name specified.
+	Using the '-p' option will use git patch mode. Otherwise all changes are committed
 
-	Without -p, the commit message provided will be transformed in to a branch and
-	all changes will be committed to the new branch.
+	Branch name will be 'fix/commit-message' with whitespace replaced with dashes
 
 	Both methods will push the branch to origin and return you to your original checkout
 	EOF
