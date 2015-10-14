@@ -14,8 +14,6 @@ usage() {
 	EOF
 }
 
-[[ -z $1 ]] && usage && exit 1
-
 unset PATCH
 while getopts ":ph" OPTION
 do
@@ -25,6 +23,8 @@ do
 	esac
 done
 shift $(( OPTIND - 1 ))
+
+[[ -z $1 ]] && usage && exit 1
 
 MESSAGE=$*
 BRANCH="fix/$(echo "$MESSAGE" | sed -e 's/ /-/g' | cut -c1-15 | awk '{print tolower($0)}')"
