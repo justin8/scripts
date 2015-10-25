@@ -1,5 +1,17 @@
 #!/bin/bash
+set -e
 TAR="/tmp/ghost-$(date +%Y-%m-%d).tar.gz"
-tar -zcvf "$TAR" -C /srv/ghost/ blog/content blog/config.js
-gdrive upload -f "$TAR" -p 0Bxin7J_Xa9tncUhGYkV4V0Q4RVk
-rm "$TAR"
+err=''
+
+handler() {
+	echo "Failed to backup blog!"
+	echo $err
+	exit 1
+}
+
+trap handler EXIT SIGINT SIGQUIT SIGTERM
+err=$(tar -zcvf "$TAR" -C /srv/ghost/ blog/content blog/config.js 2>&1)
+err=$(gdrive upload -f "$TAR" -p 0Bxin7J_Xa9tncUhGYkV4V0Q4RVk 2>&1)
+err=$(rm "$TAR" 2>&1)
+
+trap - EXIT SIGINT SIGQUIT SIGTERM
