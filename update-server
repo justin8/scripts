@@ -21,7 +21,8 @@ restart_if_updated docker
 restart_if_updated sabnzbd
 restart_if_updated transmission-cli transmission
 
-/etc/cron.daily/hacky-fix-for-shit
+script=/etc/cron.daily/hacky-fix-for-shit
+[[ -f $script ]] && $script
 
 
 if grep -q 'nfs-utils' "$pacman_out"; then
