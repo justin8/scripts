@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Restart $app if $package was updated
+restart_if_updated() {
+	package=$1
+	app=${2:-$1}
+	if grep -q "$package" "$pacman_out"; then
+		systemctl restart "$app"
+	fi
+}
+
+
+pacman_out=$(mktemp)
+pacman -Syu|tee "$pacman_out"
+systemd-tmpfiles --create
+systemctl daemon-reload
+
+restart_if_updated jenkins
+restart_if_updated plex-media-server plexmediaserver
+restart_if_updated docker
+restart_if_updated sabnzbd
+restart_if_updated transmission-cli transmission
+
+/etc/cron.daily/hacky-fix-for-shit
+
+
+if grep -q 'nfs-utils' "$pacman_out"; then
+	echo 'WARNING: nfs-utils has updated. You probably have to reboot'
+fi
+
+if grep -q 'Building image from preset:' "$pacman_out"; then
+	echo 'WARNING: A kernel update may have occurred. You will need to reboot.'
+	echo 'The following kernel packages updated:'
+	grep -o '^upgrading linux-[^.]*' "$pacman_out" | awk '{print $2}'
+fi
