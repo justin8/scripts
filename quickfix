@@ -49,5 +49,6 @@ else
 	git commit -am "$MESSAGE"
 fi
 git push origin HEAD
+git stash
 git checkout "$ORIGINAL_BRANCH"
-
+git stash pop
