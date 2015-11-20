@@ -17,4 +17,6 @@ else
 	url="git@github.com:$1"
 fi
 
-git clone "$url"
+shift
+
+git clone "$url" $@
