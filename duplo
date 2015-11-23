@@ -1,0 +1,143 @@
+#!/bin/bash
+#TODO: Cache gpg_pw in keyring if not set in config and if possible; export as PASSPHRASE for duplicity should work
+#TODO: Support usage as root; are configs saved in /etc?
+set -e
+GOOGLE_ACCOUNT='justin@dray.be'
+CONFIG=main
+CONFIG_DIR="$HOME/.duply/$CONFIG"
+CONFIG_FILE="$CONFIG_DIR/conf"
+EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
+NODE_VERSION=5
+BINARY_DEPENDENCIES="keybase node duply duplicity gpg jq"
+PIP_DEPENDENCIES="PyDrive"
+
+setup_node() {
+	if "$HOME/.nvm/nvm.sh"; then
+		. "$HOME/.nvm/nvm.sh"
+		if ! nvm use $NODE_VERSION &>/dev/null; then
+			nvm install $NODE_VERSION
+			nvm use $NODE_VERSION
+		fi
+	fi
+}
+
+check_binary_dependency() {
+	application="$1"
+	if ! which "$application" &>/dev/null; then
+		echo "Please install $application"
+		return 1
+	fi
+}
+
+check_pip_dependency() {
+	application="$1"
+	if ! pip freeze | grep -q "$application" &>/dev/null; then
+		echo "Please install $application"
+		return 1
+	fi
+}
+
+get_key() {
+	local key_id
+	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/')
+	if [[ ! $key_id ]]; then
+		keybase login
+		key_id=$(keybase status | jq -r .user.key.key_id)
+	fi
+	sed -E 's/.*(.{8})/\1/' <<<"$key_id"
+}
+
+trust_key() {
+	local key=$1
+	if ! gpg --export-ownertrust | grep -q "$key"; then
+		full_key=$(gpg --list-keys --fingerprint --with-colons | grep "fpr.*$key" | sed -E 's/^fpr:*([A-F0-9]+):/\1/')
+		gpg --import-ownertrust <<<"${full_key}:6:"
+	fi
+}
+
+create_duply_config() {
+	if ! [[ -f $CONFIG_FILE ]]; then
+		mkdir -p "$CONFIG_DIR"
+		touch "$CONFIG_FILE"
+		touch "$EXCLUSIONS_FILE"
+	fi
+}
+
+write_gdrive_config() {
+	cat <<-EOF > "$CONFIG_DIR/gdrive"
+		client_config_backend: settings
+		client_config:
+		    client_id: 16782109138-qhd2nnb6ik7drpav1j4tgp4g9dkl5t2t.apps.googleusercontent.com
+		    client_secret: WfY3Iz0dznkKU92YfCCSo3Fu
+		save_credentials: True
+		save_credentials_backend: file
+		save_credentials_file: $CONFIG_DIR/client_secrets.json
+		get_refresh_token: True
+		EOF
+
+}
+
+populate_exclusions() {
+	local EXCLUSIONS
+	EXCLUSIONS+=("- $HOME/Downloads")
+	EXCLUSIONS+=("- $HOME/.cache")
+	EXCLUSIONS+=("- $HOME/.config/gcloud/logs")
+	EXCLUSIONS+=("- $HOME/.local/share/Steam")
+	EXCLUSIONS+=("- $HOME/.local/share/Trash")
+	EXCLUSIONS+=("- $HOME/.PlayOnLinux")
+	EXCLUSIONS+=("- $HOME/Videos")
+	EXCLUSIONS+=("- $HOME/Virtualbox VMs")
+	#EXCLUSIONS+=("+ $HOME")
+	EXCLUSIONS+=('- **')
+
+	touch "$EXCLUSIONS_FILE"
+	for line in "${EXCLUSIONS[@]}"; do
+		if ! grep -Fq -- "$line" "$EXCLUSIONS_FILE" ; then
+			echo "$line" >> "$EXCLUSIONS_FILE"
+		fi
+	done
+}
+
+set_config_line() {
+	local line="$1"
+	variable=$(grep -Eo '^.*?=' <<<"$line")
+	if grep -q "^$variable" "$CONFIG_FILE"; then
+		sed -i "s|^${variable}.*|$line|g" "$CONFIG_FILE"
+	else
+		echo "$line" >> "$CONFIG_FILE"
+	fi
+}
+
+setup_duply() {
+	local key_id=$1
+	local CONFIG_LINES
+	CONFIG_LINES+=("export GOOGLE_DRIVE_SETTINGS=gdrive")
+	CONFIG_LINES+=("GPG_KEY=$key_id")
+	CONFIG_LINES+=("TARGET='gdocs://$GOOGLE_ACCOUNT/backups/$(hostname)'")
+	CONFIG_LINES+=("SOURCE='/'")
+	CONFIG_LINES+=('DUPL_PARAMS="$DUPL_PARAMS --use-agent"')
+
+	create_duply_config
+	populate_exclusions
+	write_gdrive_config
+	for line in "${CONFIG_LINES[@]}"; do
+		set_config_line "$line"
+	done
+}
+
+for dep in $BINARY_DEPENDENCIES; do
+	check_binary_dependency "$dep"
+done
+
+for dep in $PIP_DEPENDENCIES; do
+	check_pip_dependency "$dep"
+done
+
+setup_node
+
+key_id="$(get_key)"
+trust_key "$key_id"
+setup_duply "$key_id"
+
+cd "$CONFIG_DIR"
+duply $CONFIG "$@"
