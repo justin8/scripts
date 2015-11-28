@@ -64,6 +64,7 @@ create_duply_config() {
 		mkdir -p "$CONFIG_DIR"
 		touch "$CONFIG_FILE"
 		touch "$EXCLUSIONS_FILE"
+		chmod -R go-rwx "$CONFIG_DIR"
 	fi
 }
 
