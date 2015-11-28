@@ -1,6 +1,5 @@
 #!/bin/bash
 #TODO: Support usage as root; are configs saved in /etc?
-#TODO: Auto purge on backup?
 set -e
 CONFIG=${1^^}
 shift
@@ -176,3 +175,11 @@ setup_gpg_agent
 
 cd "$CONFIG_DIR"
 GPG_PW=$(get_gpg_passphrase) duply $CONFIG "$@"
+
+if [[ $1 == 'backup' ]]; then
+	cat <<-EOF
+	Purging old backups
+	-----------------------------------------
+	EOF
+	GPG_PW=$(get_gpg_passphrase) duply $CONFIG purge
+fi
