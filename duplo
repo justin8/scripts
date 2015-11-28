@@ -39,8 +39,9 @@ check_pip_dependency() {
 
 get_key() {
 	local key_id
-	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/')
+	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/') &>/dev/null
 	if [[ ! $key_id ]]; then
+		setup_node
 		keybase login
 		key_id=$(keybase status | jq -r .user.key.key_id)
 	fi
@@ -133,7 +134,6 @@ for dep in $PIP_DEPENDENCIES; do
 	check_pip_dependency "$dep"
 done
 
-setup_node
 
 key_id="$(get_key)"
 trust_key "$key_id"
