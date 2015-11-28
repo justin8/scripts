@@ -2,8 +2,10 @@
 #TODO: Cache gpg_pw in keyring if not set in config and if possible; export as PASSPHRASE for duplicity should work
 #TODO: Support usage as root; are configs saved in /etc?
 set -e
-GOOGLE_ACCOUNT='justin@dray.be'
-CONFIG=main
+CONFIG=${1^^}
+shift
+GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
+RSYNC="rsync://duplo@abachi.dray.be:22222/$(hostname)"
 CONFIG_DIR="$HOME/.duply/$CONFIG"
 CONFIG_FILE="$CONFIG_DIR/conf"
 EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
@@ -65,6 +67,8 @@ create_duply_config() {
 }
 
 write_gdrive_config() {
+	set_config_line "export GOOGLE_DRIVE_SETTINGS=gdrive"
+
 	cat <<-EOF > "$CONFIG_DIR/gdrive"
 		client_config_backend: settings
 		client_config:
@@ -75,7 +79,6 @@ write_gdrive_config() {
 		save_credentials_file: $CONFIG_DIR/client_secrets.json
 		get_refresh_token: True
 		EOF
-
 }
 
 populate_exclusions() {
@@ -109,18 +112,38 @@ set_config_line() {
 	fi
 }
 
+setup_gpg_agent() {
+	local line='allow-loopback-pinentry'
+	local file="$HOME/.gnupg/gpg-agent.conf"
+
+	if ! grep -q "^$line" "$file"; then
+		echo "$line" >> "$file"
+	fi
+}
+
+set_gpg_password() {
+	local GPG_PW
+	if ! grep -q '^GPG_PW' $CONFIG_FILE; then
+		echo -n 'Please enter the GPG password:'
+		read -s GPG_PW
+		set_config_line "GPG_PW='$GPG_PW'"
+	fi
+}
+
 setup_duply() {
 	local key_id=$1
+	local target=$2
 	local CONFIG_LINES
-	CONFIG_LINES+=("export GOOGLE_DRIVE_SETTINGS=gdrive")
 	CONFIG_LINES+=("GPG_KEY=$key_id")
-	CONFIG_LINES+=("TARGET='gdocs://$GOOGLE_ACCOUNT/backups/$(hostname)'")
+	CONFIG_LINES+=("TARGET=$(eval echo \$$CONFIG)")
 	CONFIG_LINES+=("SOURCE='/'")
-	CONFIG_LINES+=('DUPL_PARAMS="$DUPL_PARAMS --use-agent"')
+	CONFIG_LINES+=('DUPL_PARAMS="$DUPL_PARAMS --use-agent --allow-source-mismatch"')
+	CONFIG_LINES+=("GPG_OPTS='--pinentry-mode loopback'")
 
 	create_duply_config
 	populate_exclusions
-	write_gdrive_config
+	set_gpg_password
+	[[ $CONFIG == 'GDRIVE' ]] && write_gdrive_config
 	for line in "${CONFIG_LINES[@]}"; do
 		set_config_line "$line"
 	done
@@ -134,10 +157,15 @@ for dep in $PIP_DEPENDENCIES; do
 	check_pip_dependency "$dep"
 done
 
+if ! [[ $CONFIG =~ (GDRIVE|RSYNC) ]]; then
+	echo 'Please specify a valid config (gdrive or rsync)'
+	exit 1
+fi
 
 key_id="$(get_key)"
 trust_key "$key_id"
 setup_duply "$key_id"
+setup_gpg_agent
 
 cd "$CONFIG_DIR"
 duply $CONFIG "$@"
