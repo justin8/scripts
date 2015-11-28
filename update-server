@@ -18,7 +18,7 @@ systemctl daemon-reload
 restart_if_updated jenkins
 restart_if_updated plex-media-server plexmediaserver
 restart_if_updated docker
-restart_if_updated sabnzbd
+restart_if_updated nzbget
 restart_if_updated transmission-cli transmission
 
 script=/etc/cron.daily/hacky-fix-for-shit
