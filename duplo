@@ -42,6 +42,7 @@ check_pip_dependency() {
 get_key() {
 	local key_id
 	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/') &>/dev/null
+
 	if [[ ! $key_id ]]; then
 		setup_node
 		keybase login
@@ -121,13 +122,18 @@ setup_gpg_agent() {
 	fi
 }
 
-set_gpg_password() {
+get_gpg_passphrase() {
 	local GPG_PW
-	if ! grep -q '^GPG_PW' $CONFIG_FILE; then
-		echo -n 'Please enter the GPG password:'
-		read -s GPG_PW
-		set_config_line "GPG_PW='$GPG_PW'"
+	source <(grep '^GPG_PW' $CONFIG_FILE)
+	if ! [[ $GPG_PW ]]; then
+		GPG_PW="$(python -c "import keyring; print(keyring.get_password('Duplo', 'GPG'))")"
+		if [[ $GPG_PW == 'None' ]]; then
+			echo -n 'Please enter the GPG passphrase:' 2>&1
+			read -s -r GPG_PW
+			python -c "import keyring; keyring.set_password('Duplo', 'GPG', '$GPG_PW')"
+		fi
 	fi
+	echo $GPG_PW
 }
 
 setup_duply() {
@@ -142,7 +148,6 @@ setup_duply() {
 
 	create_duply_config
 	populate_exclusions
-	set_gpg_password
 	[[ $CONFIG == 'GDRIVE' ]] && write_gdrive_config
 	for line in "${CONFIG_LINES[@]}"; do
 		set_config_line "$line"
@@ -168,4 +173,4 @@ setup_duply "$key_id"
 setup_gpg_agent
 
 cd "$CONFIG_DIR"
-duply $CONFIG "$@"
+GPG_PW=$(get_gpg_passphrase) duply $CONFIG "$@"
