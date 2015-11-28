@@ -1,11 +1,12 @@
 #!/bin/bash
-#TODO: Cache gpg_pw in keyring if not set in config and if possible; export as PASSPHRASE for duplicity should work
 #TODO: Support usage as root; are configs saved in /etc?
+#TODO: Auto purge on backup?
 set -e
 CONFIG=${1^^}
 shift
 GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
 RSYNC="rsync://duplo@abachi.dray.be:22222/$(hostname)"
+MAX_AGE=2M
 CONFIG_DIR="$HOME/.duply/$CONFIG"
 CONFIG_FILE="$CONFIG_DIR/conf"
 EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
@@ -145,6 +146,7 @@ setup_duply() {
 	CONFIG_LINES+=("SOURCE='/'")
 	CONFIG_LINES+=('DUPL_PARAMS="$DUPL_PARAMS --use-agent --allow-source-mismatch"')
 	CONFIG_LINES+=("GPG_OPTS='--pinentry-mode loopback'")
+	CONFIG_LINES+=("MAX_AGE=$MAX_AGE")
 
 	create_duply_config
 	populate_exclusions
