@@ -14,7 +14,7 @@ BINARY_DEPENDENCIES="keybase node duply duplicity gpg jq"
 PIP_DEPENDENCIES="PyDrive"
 
 setup_node() {
-	if "$HOME/.nvm/nvm.sh"; then
+	if [[ -f "$HOME/.nvm/nvm.sh" ]]; then
 		. "$HOME/.nvm/nvm.sh"
 		if ! nvm use $NODE_VERSION &>/dev/null; then
 			nvm install $NODE_VERSION
