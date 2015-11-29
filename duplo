@@ -109,12 +109,19 @@ configure_ssh() {
 
 populate_exclusions() {
 	local EXCLUSIONS
-	EXCLUSIONS+=("- $HOME/Downloads")
+	EXCLUSIONS+=("- $HOME/.PlayOnLinux")
 	EXCLUSIONS+=("- $HOME/.cache")
 	EXCLUSIONS+=("- $HOME/.config/gcloud/logs")
 	EXCLUSIONS+=("- $HOME/.local/share/Steam")
 	EXCLUSIONS+=("- $HOME/.local/share/Trash")
-	EXCLUSIONS+=("- $HOME/.PlayOnLinux")
+	EXCLUSIONS+=("- $HOME/.local/share/ftb")
+	EXCLUSIONS+=("- $HOME/.vagrand.d")
+	EXCLUSIONS+=("- $HOME/.ftblauncher")
+	EXCLUSIONS+=("- $HOME/.npm")
+	EXCLUSIONS+=("- $HOME/.nvm")
+	EXCLUSIONS+=("- $HOME/.virtualenvs")
+	EXCLUSIONS+=("- $HOME/.gems")
+	EXCLUSIONS+=("- $HOME/Downloads")
 	EXCLUSIONS+=("- $HOME/Videos")
 	EXCLUSIONS+=("- $HOME/Virtualbox VMs")
 	#EXCLUSIONS+=("+ $HOME")
