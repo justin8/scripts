@@ -4,8 +4,9 @@ set -e
 CONFIG=${1^^}
 shift
 GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
-RSYNC="rsync://duplo@abachi.dray.be:22222/$(hostname)"
+RSYNC="rsync://duplo:/$(hostname)"
 MAX_AGE=2M
+MAX_FULLBACKUP_AGE=2W
 CONFIG_DIR="$HOME/.duply/$CONFIG"
 CONFIG_FILE="$CONFIG_DIR/conf"
 EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
@@ -44,8 +45,7 @@ get_key() {
 	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/') &>/dev/null
 
 	if [[ ! $key_id ]]; then
-		setup_node
-		keybase login
+		setup_node 1>&2
 		key_id=$(keybase status | jq -r .user.key.key_id)
 	fi
 	sed -E 's/.*(.{8})/\1/' <<<"$key_id"
@@ -83,6 +83,30 @@ write_gdrive_config() {
 		EOF
 }
 
+write_rsync_config() {
+	if ! [[ -f "$HOME/.ssh/duplo" ]]; then
+		cd "$HOME/.ssh"
+		curl -O https://public.dray.be/duplo-key
+		setup_node 1>&2
+		keybase decrypt duplo-key > duplo-key.tar.gz
+		tar xf duplo-key.tar.gz
+	fi
+	configure_ssh
+}
+
+configure_ssh() {
+	if ! grep -q 'Host duplo' "$HOME/.ssh/config"; then
+		cat <<-EOF >>"$HOME/.ssh/config"
+
+		Host duplo
+		    User duplo
+		    Hostname abachi.dray.be
+		    Port 22222
+		    IdentityFile ~/.ssh/duplo
+		EOF
+	fi
+}
+
 populate_exclusions() {
 	local EXCLUSIONS
 	EXCLUSIONS+=("- $HOME/Downloads")
@@ -106,7 +130,7 @@ populate_exclusions() {
 
 set_config_line() {
 	local line="$1"
-	variable=$(grep -Eo '^.*?=' <<<"$line")
+	variable=$(grep -Po '^.*?=' <<<"$line")
 	if grep -q "^$variable" "$CONFIG_FILE"; then
 		sed -i "s|^${variable}.*|$line|g" "$CONFIG_FILE"
 	else
@@ -129,7 +153,7 @@ get_gpg_passphrase() {
 	if ! [[ $GPG_PW ]]; then
 		GPG_PW="$(python -c "import keyring; print(keyring.get_password('Duplo', 'GPG'))")"
 		if [[ $GPG_PW == 'None' ]]; then
-			echo -n 'Please enter the GPG passphrase:' 2>&1
+			echo -n 'Please enter the GPG passphrase:' 1>&2
 			read -s -r GPG_PW
 			python -c "import keyring; keyring.set_password('Duplo', 'GPG', '$GPG_PW')"
 		fi
@@ -141,16 +165,21 @@ setup_duply() {
 	local key_id=$1
 	local target=$2
 	local CONFIG_LINES
-	CONFIG_LINES+=("GPG_KEY=$key_id")
-	CONFIG_LINES+=("TARGET=$(eval echo \$$CONFIG)")
-	CONFIG_LINES+=("SOURCE='/'")
-	CONFIG_LINES+=('DUPL_PARAMS="$DUPL_PARAMS --use-agent --allow-source-mismatch"')
-	CONFIG_LINES+=("GPG_OPTS='--pinentry-mode loopback'")
-	CONFIG_LINES+=("MAX_AGE=$MAX_AGE")
+	local DUPL_PARAMS
+
+	DUPL_PARAMS='--use-agent --allow-source-mismatch'
+	DUPL_PARAMS+=" --full-if-older-than $MAX_FULLBACKUP_AGE"
 
 	create_duply_config
 	populate_exclusions
-	[[ $CONFIG == 'GDRIVE' ]] && write_gdrive_config
+	write_${CONFIG,,}_config
+
+	CONFIG_LINES+=("GPG_KEY=$key_id")
+	CONFIG_LINES+=("TARGET=$(eval echo \$$CONFIG)")
+	CONFIG_LINES+=("SOURCE='/'")
+	CONFIG_LINES+=("GPG_OPTS='--pinentry-mode loopback'")
+	CONFIG_LINES+=("MAX_AGE=$MAX_AGE")
+	CONFIG_LINES+=("DUPL_PARAMS=\"\$DUPL_PARAMS $DUPL_PARAMS\"")
 	for line in "${CONFIG_LINES[@]}"; do
 		set_config_line "$line"
 	done
