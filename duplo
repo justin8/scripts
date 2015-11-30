@@ -13,7 +13,7 @@ CONFIG_FILE="$CONFIG_DIR/conf"
 EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
 NODE_VERSION=5
 BINARY_DEPENDENCIES="keybase node duply duplicity gpg jq"
-PIP_DEPENDENCIES="PyDrive"
+PIP_DEPENDENCIES="PyDrive keyring"
 
 setup_node() {
 	if [[ -f "$HOME/.nvm/nvm.sh" ]]; then
