@@ -1,12 +1,13 @@
 #!/bin/bash
 #TODO: Support usage as root; are configs saved in /etc?
+#TODO: Retry unless a backup is already done that day? maybe hourly cron that checks last valid backup date? Might need a seperate wrapper for that. or a flag
 set -e
 CONFIG=${1^^}
 shift
 GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
 RSYNC="rsync://duplo:/$(hostname)"
-MAX_AGE=2M
-MAX_FULLBACKUP_AGE=2W
+MAX_AGE=3M
+MAX_FULLBACKUP_AGE=1M
 CONFIG_DIR="$HOME/.duply/$CONFIG"
 CONFIG_FILE="$CONFIG_DIR/conf"
 EXCLUSIONS_FILE="$CONFIG_DIR/exclude"
@@ -115,9 +116,12 @@ populate_exclusions() {
 	EXCLUSIONS+=("- $HOME/.local/share/Steam")
 	EXCLUSIONS+=("- $HOME/.local/share/Trash")
 	EXCLUSIONS+=("- $HOME/.local/share/ftb")
-	EXCLUSIONS+=("- $HOME/.vagrand.d")
+	EXCLUSIONS+=("- $HOME/.config/chromium")
+	EXCLUSIONS+=("- $HOME/.config/gcloud")
+	EXCLUSIONS+=("- $HOME/.vagrant.d")
 	EXCLUSIONS+=("- $HOME/.ftblauncher")
 	EXCLUSIONS+=("- $HOME/.npm")
+	EXCLUSIONS+=("- $HOME/.vim")
 	EXCLUSIONS+=("- $HOME/.nvm")
 	EXCLUSIONS+=("- $HOME/.virtualenvs")
 	EXCLUSIONS+=("- $HOME/.gems")
@@ -218,5 +222,6 @@ if [[ $1 == 'backup' ]]; then
 	Purging old backups
 	-----------------------------------------
 	EOF
+	GPG_PW=$(get_gpg_passphrase) duply $CONFIG cleanup
 	GPG_PW=$(get_gpg_passphrase) duply $CONFIG purge
 fi
