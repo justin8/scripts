@@ -49,7 +49,7 @@ check_pip_dependency() {
 
 get_key() {
 	local key_id
-	key_id=$(grep GPG_KEY "$CONFIG_FILE" | sed -E 's/.*=(.*)/\1/') &>/dev/null
+	key_id=$(grep GPG_KEY "$CONFIG_FILE" 2>/dev/null | sed -E 's/.*=(.*)/\1/')
 
 	if [[ ! $key_id ]]; then
 		setup_node 1>&2
