@@ -1,11 +1,27 @@
 #!/bin/bash
-#TODO: Support usage as root; are configs saved in /etc?
-#TODO: Retry unless a backup is already done that day? maybe hourly cron that checks last valid backup date? Might need a seperate wrapper for that. or a flag
+#
+# This supports backups to google drive and rsync to a remote machine.
+# It uses keybase for key selection and storage. keybase must be logged in
+# before use. Or a key specified in the config file.
+# GPG_PW can be set in the config file, otherwise the local keyring agent will
+# be used to store the GPG password for encryption and signing.
+#
+# NOTES:
+# If using as root over ssh, you need to chown the tty at $SSH_TTY to be owned
+# by root, kill any running gpg-agent processes for root and then login to
+# keybase. Otherwise it will refuse to let pinentry run
+#
+# RSYNC setup:
+# Server-side setup requires the rsync user created with a trusted key-pair
+# The private key encrypted and available at $RSYNC_KEY_LOCATION
+#
+# TODO: Retry unless a backup is already done that day? maybe hourly cron that checks last valid backup date? Might need a seperate wrapper for that. or a flag
 set -e
 CONFIG=${1^^}
 shift || true
 GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
 RSYNC="rsync://duplo:/$(hostname)"
+RSYNC_KEY_LOCATION='https://public.dray.be/duplo-key'
 MAX_AGE=3M
 MAX_FULLBACKUP_AGE=1M
 CONFIG_DIR="$HOME/.duply/$CONFIG"
@@ -93,7 +109,7 @@ write_gdrive_config() {
 write_rsync_config() {
 	if ! [[ -f "$HOME/.ssh/duplo" ]]; then
 		cd "$HOME/.ssh"
-		curl -O https://public.dray.be/duplo-key
+		curl -O $RSYNC_KEY_LOCATION
 		setup_node 1>&2
 		keybase decrypt duplo-key > duplo-key.tar.gz
 		tar xf duplo-key.tar.gz
