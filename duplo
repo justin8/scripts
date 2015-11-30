@@ -29,15 +29,17 @@ check_binary_dependency() {
 	application="$1"
 	if ! which "$application" &>/dev/null; then
 		echo "Please install $application"
-		return 1
+		echo 1
 	fi
 }
 
 check_pip_dependency() {
 	application="$1"
-	if ! pip freeze | grep -q "$application" &>/dev/null; then
-		echo "Please install $application"
-		return 1
+	pip=pip
+	which pip2 &>/dev/null && pip=pip2
+	if ! $pip freeze | grep -q "$application" &>/dev/null; then
+		echo "Please install $application" 1>&2
+		echo 1
 	fi
 }
 
@@ -196,13 +198,17 @@ setup_duply() {
 	done
 }
 
+dep_error=0
+
 for dep in $BINARY_DEPENDENCIES; do
-	check_binary_dependency "$dep"
+	dep_error=$(( $dep_error + $(check_binary_dependency "$dep") ))
 done
 
 for dep in $PIP_DEPENDENCIES; do
-	check_pip_dependency "$dep"
+	dep_error=$(( $dep_error + $(check_pip_dependency "$dep") ))
 done
+
+[[ $dep_error != 0 ]] && exit 1
 
 if ! [[ $CONFIG =~ (GDRIVE|RSYNC) ]]; then
 	echo 'Please specify a valid config (gdrive or rsync)'
