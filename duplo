@@ -3,7 +3,7 @@
 #TODO: Retry unless a backup is already done that day? maybe hourly cron that checks last valid backup date? Might need a seperate wrapper for that. or a flag
 set -e
 CONFIG=${1^^}
-shift
+shift || true
 GDRIVE="gdocs://justin@dray.be/backups/$(hostname)"
 RSYNC="rsync://duplo:/$(hostname)"
 MAX_AGE=3M
@@ -28,8 +28,10 @@ setup_node() {
 check_binary_dependency() {
 	application="$1"
 	if ! which "$application" &>/dev/null; then
-		echo "Please install $application"
+		echo "Please install $application" 1>&2
 		echo 1
+	else
+		echo 0
 	fi
 }
 
@@ -40,6 +42,8 @@ check_pip_dependency() {
 	if ! $pip freeze | grep -q "$application" &>/dev/null; then
 		echo "Please install $application" 1>&2
 		echo 1
+	else
+		echo 0
 	fi
 }
 
@@ -201,11 +205,13 @@ setup_duply() {
 dep_error=0
 
 for dep in $BINARY_DEPENDENCIES; do
-	dep_error=$(( $dep_error + $(check_binary_dependency "$dep") ))
+	check=$(check_binary_dependency "$dep")
+	dep_error=$(( dep_error + check ))
 done
 
 for dep in $PIP_DEPENDENCIES; do
-	dep_error=$(( $dep_error + $(check_pip_dependency "$dep") ))
+	check=$(check_pip_dependency "$dep")
+	dep_error=$(( dep_error + check ))
 done
 
 [[ $dep_error != 0 ]] && exit 1
