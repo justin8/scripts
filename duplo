@@ -167,12 +167,14 @@ setup_gpg_agent() {
 get_gpg_passphrase() {
 	local GPG_PW
 	source <(grep '^GPG_PW' $CONFIG_FILE)
+	python=python
+	which python2 &>/dev/null && python=python2
 	if ! [[ $GPG_PW ]]; then
-		GPG_PW="$(python -c "import keyring; print(keyring.get_password('Duplo', 'GPG'))")"
+		GPG_PW="$($python -c "import keyring; print(keyring.get_password('Duplo', 'GPG'))")"
 		if [[ $GPG_PW == 'None' ]]; then
 			echo -n 'Please enter the GPG passphrase:' 1>&2
 			read -s -r GPG_PW
-			python -c "import keyring; keyring.set_password('Duplo', 'GPG', '$GPG_PW')"
+			$python -c "import keyring; keyring.set_password('Duplo', 'GPG', '$GPG_PW')"
 		fi
 	fi
 	echo $GPG_PW
