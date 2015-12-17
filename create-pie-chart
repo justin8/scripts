@@ -90,5 +90,5 @@ case $(uname) in
 		;;
 esac
 
-sleep 10
-rm "$TEMP"
+# Wait for browser to open the file; it will be cleaned up on close
+sleep 5
