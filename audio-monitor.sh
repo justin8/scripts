@@ -1,4 +1,6 @@
 #!/bin/bash
+export $(cat /proc/$(pgrep -u $(whoami) ^gnome-shell$)/environ | grep -z DBUS_SESSION_BUS_ADDRESS)
+export XDG_RUNTIME_DIR=/run/user/$UID
 
 audio=$(pactl list | grep -A2 '^Sink' | grep RUNNING)
 
