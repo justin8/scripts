@@ -46,7 +46,9 @@ else
 	fi
 
 	git checkout -b "$BRANCH" master
-	git commit -am "$MESSAGE"
+	# git commit -a is broken on git 2.1 in Debian 8
+	git add -A
+	git commit -m "$MESSAGE"
 fi
 git push origin HEAD
 git stash
