@@ -4,6 +4,7 @@ TAR="/tmp/ghost-$(date +%Y-%m-%d).tar.gz"
 err=''
 
 handler() {
+	rm -f "$TAR"
 	echo "Failed to backup blog!"
 	echo $err
 	exit 1
