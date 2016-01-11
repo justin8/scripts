@@ -11,7 +11,7 @@ restart_if_updated() {
 
 
 pacman_out=$(mktemp)
-pacman -Syu|tee "$pacman_out"
+pacman -Syu --noconfirm --force 2>&1|tee "$pacman_out"
 systemd-tmpfiles --create
 systemctl daemon-reload
 
