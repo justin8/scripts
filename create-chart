@@ -1,0 +1,129 @@
+#!/bin/bash
+WIDTH=1920
+HEIGHT=1080
+TEMP=$(mktemp)
+CHART_TYPE="$1"
+TITLE=''
+shift
+
+usage() {
+	cat <<-EOF
+	usage: $(basename "$0") CHART_TYPE title[:columname1[:columnameY]] name1:value1-1[:value1-2[:value1-X]] [nameN:valueN-1[:valueN-2[:valueN-X]]]...
+
+	Create a chart from your inputs!
+	CHART_TYPE can be one of:
+	  - pie
+	  - bar
+	  - column
+	  - line
+	  - area
+	  - steppedarea
+
+	If you use a single title, the elements will have the key 'value'.
+	If you want to name your elements, use title:foo:bar
+	All values must be integers.
+	The graph will be opened in chrome/chromium automatically
+	EOF
+}
+
+cleanup() {
+	rm "$TEMP"
+}
+
+trap cleanup EXIT SIGINT SIGTERM SIGQUIT
+
+# Chart type is already removed from input
+[[ $# -lt 2 ]] && usage && exit 1
+[[ $1 =~ --?h(elp)? ]] && usage && exit 0
+
+shopt -s nocasematch
+case $CHART_TYPE in
+	pie) CHART_TYPE=PieChart ;;
+	bar) CHART_TYPE=BarChart ;;
+	column) CHART_TYPE=ColumnChart ;;
+	line) CHART_TYPE=LineChart ;;
+	area) CHART_TYPE=AreaChart ;;
+	steppedarea) CHART_TYPE=SteppedAreaChart ;;
+esac
+
+cat <<EOF > "$TEMP"
+<html>
+  <head>
+    <!--Load the AJAX API-->
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+
+      // Load the Visualization API and the chart package.
+      google.load('visualization', '1.0', {'packages':['corechart']});
+
+      // Set a callback to run when the Google Visualization API is loaded.
+      google.setOnLoadCallback(drawChart);
+
+      // Callback that creates and populates a data table,
+      // instantiates the chart, passes in the data and
+      // draws it.
+      function drawChart() {
+
+        // Create the data table.
+        var data = new google.visualization.DataTable();
+EOF
+
+# Column names
+COLUMNS=$1
+[[ $COLUMNS =~ : ]] || COLUMNS="$COLUMNS:value"
+IFS=: read -ra COLUMNS <<< "$COLUMNS"
+columntype=string
+for column in "${COLUMNS[@]}"; do
+	echo "data.addColumn('$columntype', '$column');" >> "$TEMP"
+	[[ ! $TITLE ]] && TITLE=$column
+	columntype=number
+done
+shift
+
+echo 'data.addRows([' >> "$TEMP"
+# Data rows
+input=("$@")
+lastpos=$(( ${#input[@]} - 1 ))
+lastrow=${input[$lastpos]}
+eof=','
+for row in "$@"; do
+	[[ $row == "$lastrow" ]] && eof=''
+	rowtitle="${row%%:*}"
+	values="${row#*:}"
+	echo "['$rowtitle', ${values//:/, }]$eof" >> "$TEMP"
+done
+
+cat <<EOF >> "$TEMP"
+        ]);
+
+        // Set chart options
+        var options = {'title':'$TITLE',
+                       'width':$WIDTH,
+                       'height':$HEIGHT};
+
+        // Instantiate and draw our chart, passing in some options.
+        var chart = new google.visualization.$CHART_TYPE(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+
+  <body>
+    <!--Div that will hold the pie chart-->
+    <div id="chart_div"></div>
+  </body>
+</html>
+EOF
+
+case $(uname) in
+	Darwin)
+		open -a /Applications/Chromium.app "$TEMP" || open -a /Applications/Google\ Chrome.app "$TEMP"
+		;;
+
+	Linux)
+		chromium "$TEMP" || google-chrome "$TEMP"
+		;;
+esac
+
+# Wait for browser to open the file; it will be cleaned up on close
+sleep 5
