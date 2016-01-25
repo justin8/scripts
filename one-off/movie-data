@@ -1,0 +1,23 @@
+#!/bin/bash
+
+find /storage/shares/movies -type f | grep -v '(' | while read -r file; do
+	realname=${file##*/}
+	realname=${realname%.*}
+	search=${realname// /+}
+	extension=${file##*.}
+
+	echo "File: $file"
+	echo "Realname: $realname"
+	echo "Extension: $extension"
+	if ! [[ -e /tmp/movie-data/$realname ]]; then
+		echo 'No data found. Downloading.'
+		year="$(lynx -source "http://www.imdb.com/find?ref_=nv_sr_fn&q=$search&s=all" | html2text -b 70 | grep -A9 '### Titles' | grep -om1 '([0-9]*)')"
+		echo "$year" > "/tmp/movie-data/$realname"
+	fi
+	year=$(cat "/tmp/movie-data/$realname")
+	echo "Year: $year"
+
+	mv "$file" "/storage/shares/movies/$realname $year.$extension"
+
+	echo
+done
