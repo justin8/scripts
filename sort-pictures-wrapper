@@ -1,5 +1,5 @@
 #!/bin/bash
-LOG="sort-pictures-wrapper.log"
+LOG="/tmp/sort-pictures-wrapper.log"
 folder='./sort'
 cd "$(dirname $(readlink -f $0))"
 
