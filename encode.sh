@@ -73,7 +73,7 @@ then
 			echo "$infile has already been processed!"
 		else
 
-			ffmpeg -i "$infile" -vcodec libx264 -crf $quality $scale $extra -preset $preset -acodec aac -ab 128k -ac 2 "$TEMPDIR/${outfile}"
+			ffmpeg -i "$infile" -vcodec libx265 -crf $quality $scale $extra -preset $preset -acodec aac -ab 128k -ac 2 "$TEMPDIR/${outfile}"
 			rc=$?
 			if [[ $rc == 0 ]]
 			then
