@@ -21,7 +21,7 @@ usage() {
 }
 
 # Defaults
-quality=20
+quality=21
 preset=veryslow
 scale=''
 extra=''
