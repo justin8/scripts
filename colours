@@ -1,0 +1,5 @@
+r() { tput setaf 1; tput bold; }
+g() { tput setaf 2; tput bold; }
+y() { tput setaf 3; tput bold; }
+b() { tput setaf 4; tput bold; }
+c() { tput sgr0; }
