@@ -130,15 +130,14 @@ def main(args):
         cprint("green", "No files found that were not already x265")
     for infile in non_x265_items:
         cprint("green", "######################################")
-        cprint("green", "Starting to convert '%s'" % infile)
+        cprint("green", "### Starting to convert '%s'" % infile)
         outfile = tempfile.mkstemp(suffix=".mkv")[1]
-        cprint("blue", "Transcoding to '%s'" % outfile)
         ff = ffmpy.FFmpeg(
                 inputs={infile: None},
                 outputs={outfile: "-y -threads 0 -vcodec libx265 -strict -2 -crf %s %s %s -preset %s -acodec libfdk_aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
 
         try:
-            cprint("green", "Running ffmpeg command: '%s'" % ff.cmd)
+            cprint("blue", "Running ffmpeg command: '%s'" % ff.cmd)
             ff.run()
             cprint("green", "######################################")
             cprint("green", "Successfully converted '%s'" % infile)
