@@ -41,6 +41,7 @@ def get_codec_map(directory):
     return codec_map
 
 
+# TODO: This needs to cache the results of all HVEC files somewhere so we don't re-check those. Should make this much faster
 def get_codecs_of_files(videos):
     vprint("### Checking codecs used in remaining videos")
     pool = ThreadPool(processes=4)
@@ -124,7 +125,7 @@ def main(args):
         vprint("Transcoding to '%s'" % outfile)
         ff = ffmpy.FFmpeg(
                 inputs={infile: None},
-                outputs={outfile: "-y -vcodec libx265 -crf %s %s %s -preset %s -acodec aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
+                outputs={outfile: "-y -threads 0 -vcodec libx265 -crf %s %s %s -preset %s -acodec aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
 
         try:
             vprint("Running ffmpeg command: '%s'" % ff.cmd)
