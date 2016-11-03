@@ -10,11 +10,19 @@ import time
 
 import ffmpy
 from pymediainfo import MediaInfo
+from colorama import Fore, Back, Style, init
+
+# Init colorama
+init()
 
 
-def vprint(message=""):
-    if VERBOSE:
-        print(message)
+def cprint(colour, message):
+    colours = {
+            "green": Fore.GREEN,
+            "blue": Fore.BLUE,
+            "red": Fore.RED
+            }
+    print(colours[colour] + str(message) + Style.RESET_ALL)
 
 
 def list_non_x265_items(directory):
@@ -25,9 +33,9 @@ def list_non_x265_items(directory):
         if v != "HEVC":
             output_list.append(k)
 
-    vprint()
-    vprint("### Files that are not in x265: ")
-    vprint(output_list)
+    print()
+    cprint("green", "### Files that are not in x265: ")
+    cprint("blue", output_list)
 
     return output_list
 
@@ -36,18 +44,18 @@ def get_codec_map(directory):
     videos = get_videos_in_dir(directory)
     codec_map = get_codecs_of_files(videos)
 
-    vprint("Map of files and codecs:")
-    vprint(codec_map)
+    cprint("green", "### Map of files and codecs:")
+    cprint("blue", codec_map)
     return codec_map
 
 
 # TODO: This needs to cache the results of all HVEC files somewhere so we don't re-check those. Should make this much faster
 def get_codecs_of_files(videos):
-    vprint("### Checking codecs used in remaining videos")
+    cprint("green", "### Checking codecs used in remaining videos")
     pool = ThreadPool(processes=4)
     t0 = time.time()
     temp_codec_map = pool.map(get_codec, videos)
-    vprint("Gathering list of codecs in files took %s seconds" % (time.time() - t0))
+    cprint("blue", "Gathering list of codecs in files took %s seconds" % (time.time() - t0))
 
     # Recombine the list of dicts in to a dict
     codec_map = {}
@@ -60,16 +68,16 @@ def get_codecs_of_files(videos):
 # This speeds things up, no point checking if converted videos already exist
 def remove_converted_videos_from_list(videos):
     output = []
-    vprint("### Checking if any videos found have already been converted")
+    cprint("green", "###  Checking if any videos found have already been converted")
     for video in videos:
         if not re.match(".* - x265\.mkv", video):
             if not os.path.exists(get_renamed_video_name(video)):
-                vprint("%s has not already been convered" % video)
+                cprint("blue", "%s has not already been convered" % video)
                 output.append(video)
             else:
-                vprint("%s has a renamed file in the same folder" % video)
+                cprint("blue", "%s has a renamed file in the same folder" % video)
         else:
-            vprint("%s is a converted and renamed file" % video)
+            cprint("blue", "%s is a converted and renamed file" % video)
     return output
 
 
@@ -86,7 +94,7 @@ def change_extension_to_mkv(filename):
 def get_videos_in_dir(directory):
     files = (os.path.abspath(os.path.join(directory, filename)) for filename in os.listdir(directory))
     raw_videos = []
-    vprint("### Testing to see if files are videos...")
+    cprint("green", "### Testing to see if files are videos...")
     for f in files:
         if is_video(f):
             raw_videos.append(f)
@@ -98,9 +106,9 @@ def get_videos_in_dir(directory):
 def is_video(f):
     result = re.match(".*\.(avi|mkv|mp4|m4v|mpg|mpeg|mov|flv|ts|wmv)", f, re.IGNORECASE)
     if result:
-        vprint("File '%s' is a video" % f)
+        cprint("blue", "File '%s' is a video" % f)
     else:
-        vprint("File '%s' is NOT a video" % f)
+        cprint("blue", "File '%s' is NOT a video" % f)
     return result
 
 
@@ -118,31 +126,32 @@ def main(args):
     scale = "-vf scale=%s:-2" % args.width if args.width else ""
 
     if not non_x265_items:
-        print("No files found that were not already x265")
+        cprint("green", "No files found that were not already x265")
     for infile in non_x265_items:
-        print("Starting to convert '%s'" % infile)
+        cprint("green", "######################################")
+        cprint("green", "Starting to convert '%s'" % infile)
         outfile = tempfile.mkstemp(suffix=".mkv")[1]
-        vprint("Transcoding to '%s'" % outfile)
+        cprint("blue", "Transcoding to '%s'" % outfile)
         ff = ffmpy.FFmpeg(
                 inputs={infile: None},
                 outputs={outfile: "-y -threads 0 -vcodec libx265 -crf %s %s %s -preset %s -acodec aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
 
         try:
-            vprint("Running ffmpeg command: '%s'" % ff.cmd)
+            cprint("green", "Running ffmpeg command: '%s'" % ff.cmd)
             ff.run()
-            print("######################################")
-            print("Successfully converted '%s'" % infile)
+            cprint("green", "######################################")
+            cprint("green", "Successfully converted '%s'" % infile)
             renamed_file = get_renamed_video_name(infile)
-            print("Moving to '%s'..." % renamed_file)
+            cprint("blue", "Moving to '%s'..." % renamed_file)
             shutil.move(outfile, renamed_file)
             if args.in_place:
                 new_filename = change_extension_to_mkv(infile)
-                print("Removing original file '%s'" % infile)
+                cprint("blue", "Removing original file '%s'" % infile)
                 os.remove(infile)
-                print("Renaming to '%s'" % new_filename)
+                cprint("blue", "Renaming to '%s'" % new_filename)
                 shutil.move(renamed_file, new_filename)
         except Exception as e:
-            print("ffmpeg failed! No files will be overwritten")
+            cprint("red", "ffmpeg failed! No files will be overwritten")
             print(e)
         if os.path.exists(outfile):
             os.remove(outfile)
