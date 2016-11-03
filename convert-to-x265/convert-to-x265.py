@@ -134,7 +134,7 @@ def main(args):
         cprint("blue", "Transcoding to '%s'" % outfile)
         ff = ffmpy.FFmpeg(
                 inputs={infile: None},
-                outputs={outfile: "-y -threads 0 -strict -vcodec libx265 -crf %s %s %s -preset %s -acodec aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
+                outputs={outfile: "-y -threads 0 -vcodec libx265 -strict -2 -crf %s %s %s -preset %s -acodec libfdk_aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
 
         try:
             cprint("green", "Running ffmpeg command: '%s'" % ff.cmd)
