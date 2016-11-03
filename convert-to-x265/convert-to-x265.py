@@ -123,6 +123,7 @@ def get_codec(file_path):
 def main(args):
     non_x265_items = list_non_x265_items(args.directory)
 
+    failures = []
     scale = "-vf scale=%s:-2" % args.width if args.width else ""
 
     if not non_x265_items:
@@ -152,9 +153,15 @@ def main(args):
                 shutil.move(renamed_file, new_filename)
         except Exception as e:
             cprint("red", "ffmpeg failed! No files will be overwritten")
+            failures.append(infile)
             print(e)
         if os.path.exists(outfile):
             os.remove(outfile)
+    cprint("green", "### Finished converting all videos!")
+    if failures:
+        cprint("red", "### The below files failed to convert correctly. Please check the output above for more details:")
+        for failure in failures:
+            cprint("blue", failure)
 
 
 if __name__ == "__main__":
