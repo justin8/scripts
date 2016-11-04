@@ -82,7 +82,7 @@ def remove_converted_videos_from_list(videos):
 
 
 def get_renamed_video_name(filename):
-    split_filename = filename.split('.')
+    split_filename = os.path.splitext(filename)
     return "%s - x265.mkv" % split_filename[0]
 
 
