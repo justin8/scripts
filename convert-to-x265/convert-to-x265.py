@@ -72,7 +72,7 @@ def remove_converted_videos_from_list(videos):
     for video in videos:
         if not re.match(".* - x265\.mkv", video):
             if not os.path.exists(get_renamed_video_name(video)):
-                cprint("blue", "%s has not already been convered" % video)
+                cprint("blue", "%s may not have already been convered" % video)
                 output.append(video)
             else:
                 cprint("blue", "%s has a renamed file in the same folder" % video)
