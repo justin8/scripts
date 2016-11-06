@@ -7,7 +7,9 @@ import re
 
 from pprint import pprint
 from pymediainfo import MediaInfo
-from colorama import Fore, Back, Style, init
+from colorama import Fore, Style, init
+
+init()
 
 
 def vprint(colour, message):
@@ -101,7 +103,7 @@ def print_series_totals(statistics):
                 if k not in totals[stat]:
                     totals[stat][k] = 0
                 totals[stat][k] += v
-                
+
     cprint("green", "TOTALS:")
     cprint("blue", "  Episodes: %s" % totals["episodes"])
 
@@ -112,23 +114,21 @@ def print_series_totals(statistics):
             colour = "green"
         if item == "720p":
             colour = "yellow"
-        cprint(colour, "    %s: %s" % (item, '{:.1%}'.format(totals["quality"][item] / totals["episodes"])))
+        cprint(colour, "    %s: %s (%s)" % (item, totals["quality"][item], '{:.1%}'.format(totals["quality"][item] / totals["episodes"])))
 
     cprint("blue", "  Codec:")
     for item in totals["codec"]:
         colour = "red"
         if item == "x265":
             colour = "green"
-        cprint(colour, "    %s: %s" % (item, '{:.1%}'.format(totals["codec"][item] / totals["episodes"])))
-
-        
+        cprint(colour, "    %s: %s (%s)" % (item, totals["codec"][item], '{:.1%}'.format(totals["codec"][item] / totals["episodes"])))
 
 
 def main(args):
     filemap = {}
     data_file = os.path.join("/tmp", os.path.basename(args.directory))
 
-    if os.path.exists(data_file):
+    if os.path.exists(data_file) and not args.ignore_cache:
         vprint("green", "Loading from cache...")
         with open(data_file, "rb") as f:
             filemap = pickle.load(f)
@@ -186,6 +186,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-v", "--verbose",
                         help="Print more verbose messages",
+                        action="store_true")
+    parser.add_argument("-i", "--ignore-cache",
+                        help="Ignore the cache and rebuild it",
                         action="store_true")
     parser.add_argument("directory",
                         help="The directory to read files from",
