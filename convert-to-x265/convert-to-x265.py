@@ -164,7 +164,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-v", "--verbose",
                         help="Print more verbose messages",
                         action="store_true")
@@ -181,11 +181,9 @@ if __name__ == "__main__":
                         action="store")
     parser.add_argument("-e", "--extra-args",
                         help="Any extra arguments to pass to ffmpeg",
-                        default="",
                         action="store")
     parser.add_argument("-i", "--in-place",
                         help="Replace files in-place instead of appending ' x265' to the end",
-                        default="",
                         action="store_true")
     parser.add_argument("directory",
                         help="The directory to read files from",
