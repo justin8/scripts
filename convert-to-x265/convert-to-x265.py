@@ -173,7 +173,7 @@ if __name__ == "__main__":
                         action="store")
     parser.add_argument("-q", "--quality",
                         help="Quality quantizer",
-                        default=21,
+                        default=20,
                         action="store")
     parser.add_argument("-p", "--preset",
                         help="Encoding preset to use",
