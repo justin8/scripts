@@ -35,8 +35,8 @@ def cprint(colour, message):
 
 
 def is_video(f):
-    result = re.match(".*\.(avi|mkv|mp4|m4v|mpg|mpeg|mov|flv|ts|wmv)", f, re.IGNORECASE)
-    return result
+    video_extensions = ("avi", "mkv", "mp4", "mpg", "mpeg", "mov", "m4v", "flv", "ts", "wmv")
+    return f.endswith(video_extensions)
 
 
 def get_quality(track):
