@@ -4,17 +4,23 @@ import argparse
 import os
 import pickle
 import re
-import tempfile
+from copy import deepcopy
 
 from pprint import pprint
 from pymediainfo import MediaInfo
 from colorama import Fore, Style, init
+from tqdm import tqdm
 
 init()
 
 
 def vprint(colour, message):
-    if VERBOSE:
+    if VERBOSE > 0:
+        cprint(colour, message)
+
+
+def vvprint(colour, message):
+    if VERBOSE > 1:
         cprint(colour, message)
 
 
@@ -58,136 +64,208 @@ def parse_season(filename):
 
 def parse_per_season_statistics(filemap):
     statistics = {}
-    for filename, metadata in filemap.items():
-        season = parse_season(filename)
-        if season not in statistics:
-            statistics[season] = {"episodes": 0, "quality": {}, "codec": {}}
-        statistics[season]["episodes"] += 1
+    for show in filemap:
+        statistics[show] = {}
+        for filename, metadata in filemap[show].items():
+            season = parse_season(filename)
+            if season not in statistics[show]:
+                statistics[show][season] = {"episodes": 0, "quality": {}, "codec": {}}
+            statistics[show][season]["episodes"] += 1
 
-        for stat in ["quality", "codec"]:
-            if not metadata[stat] in statistics[season][stat]:
-                statistics[season][stat][metadata[stat]] = 0
-            statistics[season][stat][metadata[stat]] += 1
+            for stat in ["quality", "codec"]:
+                if not metadata[stat] in statistics[show][season][stat]:
+                    statistics[show][season][stat][metadata[stat]] = 0
+                statistics[show][season][stat][metadata[stat]] += 1
 
     return statistics
 
 
-def print_season_totals(statistics):
-    for season, metadata in statistics.items():
-        print("Season %s" % season)
-        cprint("blue", "  Quality:")
-        for quality, count in statistics[season]["quality"].items():
-            colour = "red"
-            if quality == "1080p":
-                colour = "green"
-            if quality == "720p":
-                colour = "yellow"
-            cprint(colour, "    %s: %s" % (quality, '{:.1%}'.format(count / metadata["episodes"])))
-        cprint("blue", "  Codec:")
-        for codec, count in statistics[season]["codec"].items():
-            colour = "red"
-            if codec == "x265":
-                colour = "green"
-            cprint(colour, "    %s: %s" % (codec, '{:.1%}'.format(count / metadata["episodes"])))
+def parse_per_show_statistics(filemap):
+    statistics = {}
+    for show in filemap:
+        for filename, metadata in filemap[show].items():
+            if show not in statistics:
+                statistics[show] = {"episodes": 0, "quality": {}, "codec": {}}
+            statistics[show]["episodes"] += 1
+
+            for stat in ["quality", "codec"]:
+                if not metadata[stat] in statistics[show][stat]:
+                    statistics[show][stat][metadata[stat]] = 0
+                statistics[show][stat][metadata[stat]] += 1
+
+    return statistics
 
 
-def print_series_totals(statistics):
-    totals = {"episodes": 0}
+def parse_global_statistics(show_statistics):
+    statistics = {"episodes": 0, "codec": {}, "quality": {}}
+    for metadata in show_statistics.values():
+        statistics["episodes"] += metadata["episodes"]
+        for stat in ["quality", "codec"]:
+            for item in metadata[stat]:
+                if item not in statistics[stat]:
+                    statistics[stat][item] = 0
+                statistics[stat][item] += metadata[stat][item]
+    return statistics
 
-    for item in statistics:
-        totals["episodes"] += statistics[item]["episodes"]
 
-    for stat in ["quality", "codec"]:
-        totals[stat] = {}
-        for item in statistics:
-            for k, v in statistics[item][stat].items():
-                if k not in totals[stat]:
-                    totals[stat][k] = 0
-                totals[stat][k] += v
+def get_codec_colour(codec):
+    if codec == "x265":
+        return "green"
+    return "red"
 
-    cprint("green", "TOTALS:")
-    cprint("blue", "  Episodes: %s" % totals["episodes"])
 
-    cprint("blue", "  Quality:")
-    for item in totals["quality"]:
-        colour = "red"
-        if item == "1080p":
-            colour = "green"
-        if item == "720p":
-            colour = "yellow"
-        cprint(colour, "    %s: %s (%s)" % (item, totals["quality"][item], '{:.1%}'.format(totals["quality"][item] / totals["episodes"])))
+def get_quality_colour(quality):
+    if quality == "1080p":
+        return "green"
+    if quality == "720p":
+        return "yellow"
+    return "red"
 
-    cprint("blue", "  Codec:")
-    for item in totals["codec"]:
-        colour = "red"
-        if item == "x265":
-            colour = "green"
-        cprint(colour, "    %s: %s (%s)" % (item, totals["codec"][item], '{:.1%}'.format(totals["codec"][item] / totals["episodes"])))
+
+def print_metadata(metadata, indent=0):
+    indent = ' ' * indent
+    cprint("blue", "%sEpisodes: %s" % (indent, metadata["episodes"]))
+    cprint("blue", "%sQuality:" % indent)
+    for quality, count in metadata["quality"].items():
+        colour = get_quality_colour(quality)
+        cprint(colour, "%s  %s: %s (%s)" % (indent, quality, count, '{:.1%}'.format(count / metadata["episodes"])))
+
+    cprint("blue", "%sCodec:" % indent)
+    for codec, count in metadata["codec"].items():
+        colour = get_codec_colour(codec)
+        cprint(colour, "%s  %s: %s (%s)" % (indent, codec, count, '{:.1%}'.format(count / metadata["episodes"])))
+
+
+def print_season_totals(season_statistics):
+    print("SEASON TOTALS:")
+    for show, show_metadata in season_statistics.items():
+        cprint("green", "  %s" % show)
+        for season, season_metadata in show_metadata.items():
+            print("    Season %s" % season)
+            print_metadata(season_metadata, indent=6)
+        print()
+
+
+def print_show_totals(show_statistics):
+    print("SHOW TOTALS:")
+    for show, metadata in show_statistics.items():
+        cprint("green", "  %s" % show)
+        print_metadata(metadata, indent=4)
+        print()
+
+
+def print_global_totals(global_statistics):
+    print("GLOBAL TOTALS:")
+    print_metadata(global_statistics, indent=2)
+
+
+def get_videos_in_list(filenames):
+    videos = []
+    for video in filenames:
+        if is_video(video):
+            videos.append(video)
+    videos.sort()
+    return videos
+
+
+def prune_filemap(filemap):
+    tempmap = deepcopy(filemap)
+    for dirpath in tempmap:
+        for video in tempmap[dirpath]:
+            videopath = os.path.join(dirpath, video)
+            if not os.path.exists(videopath):
+                vprint("blue", "Removing %s from cache" % videopath)
+                del filemap[dirpath][video]
+    return filemap
+
+
+def update_filemap(data_file, filemap, directory):
+    cprint("green", "Checking for deleted files...")
+    filemap = prune_filemap(filemap)
+    for dirpath, dirnames, filenames in os.walk(directory, followlinks=True):
+        cprint("green", "Working in directory: %s" % dirpath)
+
+        videos = get_videos_in_list(filenames)
+        vprint("blue", "Total videos in %s: %s" % (dirpath, len(videos)))
+
+        current_video = 0
+        if VERBOSE == 0:
+            videos = tqdm(videos)
+        for video in videos:
+            if dirpath not in filemap:  # Only create if there are videos for this path
+                filemap[dirpath] = {}
+            video_path = os.path.join(dirpath, video)
+            video_size = os.stat(video_path).st_size
+            current_video += 1
+            if video in filemap[dirpath]:
+                vvprint("blue", "Found %s in cache..." % video)
+                if filemap[dirpath][video]["size"] == video_size:
+                    vprint("blue", "Using cache (%s/%s) %s" % (current_video, len(videos), video))
+                    continue
+                vvprint("blue", "Filesize differs. Invalidating cache")
+            vprint("blue", "Parsing (%s/%s) %s" % (current_video, len(videos), video))
+            metadata = MediaInfo.parse(video_path)
+            for track in metadata.tracks:
+                if track.track_type == "Video":
+                    quality = get_quality(track)
+                    codec = get_codec(track)
+                    break
+            filemap[dirpath][video] = {
+                        "size": os.stat(video_path).st_size,
+                        "quality": quality,
+                        "codec": codec
+                    }
+            if VERBOSE >= 2:
+                cprint("blue", "Video details:")
+                pprint(filemap[dirpath][video])
+                print('---------------')
+        vprint("green", "Saving out partial filemap...")
+        with open(data_file, "wb") as f:
+            pickle.dump(filemap, f)
+    return filemap
 
 
 def main(args):
-    filemap = {}
-    data_file = os.path.join(tempfile.gettempdir(), os.path.basename(args.directory))
+    data_file = os.path.join(os.path.expanduser("~"), ".simple-report-data")
 
+    filemap = {}
     if os.path.exists(data_file) and not args.ignore_cache:
         vprint("green", "Loading from cache...")
         with open(data_file, "rb") as f:
             filemap = pickle.load(f)
-    else:
-        for dirpath, dirnames, filenames in os.walk(args.directory):
-            vprint("green", "Working in directory: %s" % dirpath)
-            videos = []
-            for video in filenames:
-                if is_video(video):
-                    videos.append(os.path.join(dirpath, video))
-            videos.sort()
 
-            videos_in_folder = len(videos)
-            vprint("blue", "Total videos in %s: %s" % (dirpath, videos_in_folder))
+    filemap = update_filemap(data_file, filemap, os.path.realpath(args.directory))
 
-            current_video = 0
-            for video in videos:
-                current_video += 1
-                vprint("blue", "Parsing (%s/%s) %s" % (current_video, videos_in_folder, os.path.basename(video)))
-                metadata = MediaInfo.parse(video)
-                for track in metadata.tracks:
-                    if track.track_type == "Video":
-                        quality = get_quality(track)
-                        codec = get_codec(track)
-                        break
-                filemap[video] = {
-                            "quality": quality,
-                            "codec": codec
-                        }
-                if VERBOSE:
-                    cprint("blue", "Video details:")
-                    pprint(filemap[video])
-                    print('---------------')
-                with open(data_file, "wb") as f:
-                    pickle.dump(filemap, f)
-
-    if VERBOSE:
+    if VERBOSE >= 2:
         cprint("green", "Complete map of files:")
         pprint(filemap)
 
-    statistics = parse_per_season_statistics(filemap)
+    show_statistics = parse_per_show_statistics(filemap)
+    season_statistics = parse_per_season_statistics(filemap)
+    global_statistics = parse_global_statistics(show_statistics)
 
-    if VERBOSE:
-        cprint("green", "Statistics:")
-        pprint(statistics)
-        cprint("green", "Totals:")
-        pprint(statistics)
+    if VERBOSE >= 2:
+        cprint("green", "Show statistics:")
+        pprint(show_statistics)
+        cprint("green", "Season statistics:")
+        pprint(season_statistics)
+        cprint("green", "Global statistics:")
+        pprint(global_statistics)
 
-    print_season_totals(statistics)
+    print('\n')
+    print_season_totals(season_statistics)
     print()
-    print_series_totals(statistics)
+    print_show_totals(show_statistics)
+    print()
+    print_global_totals(global_statistics)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-v", "--verbose",
                         help="Print more verbose messages",
-                        action="store_true")
+                        default=0,
+                        action="count")
     parser.add_argument("-i", "--ignore-cache",
                         help="Ignore the cache and rebuild it",
                         action="store_true")
