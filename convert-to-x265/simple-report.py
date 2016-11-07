@@ -4,6 +4,7 @@ import argparse
 import os
 import pickle
 import re
+import tempfile
 
 from pprint import pprint
 from pymediainfo import MediaInfo
@@ -126,7 +127,7 @@ def print_series_totals(statistics):
 
 def main(args):
     filemap = {}
-    data_file = os.path.join("/tmp", os.path.basename(args.directory))
+    data_file = os.path.join(tempfile.gettempdir(), os.path.basename(args.directory))
 
     if os.path.exists(data_file) and not args.ignore_cache:
         vprint("green", "Loading from cache...")
