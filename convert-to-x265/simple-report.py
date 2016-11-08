@@ -59,7 +59,8 @@ def get_codec(track):
 
 def parse_season(filename):
     shortname = os.path.basename(filename)
-    return re.findall("- (\d+)x\d+ -", shortname)[0]
+    result = re.findall("[\s\.](?:(\d+)x\d+(?:[x-]\d+){0,2}|S(\d\d?)E\d\d?)[\s\.\-]", shortname)
+    return result[0][0] if result[0][0] else result[0][1]
 
 
 def parse_per_season_statistics(filemap):
