@@ -227,9 +227,10 @@ def update_filemap(data_file, filemap, directory):
                 cprint("blue", "Video details:")
                 pprint(filemap[dirpath][video])
                 print('---------------')
-        vprint("green", "Saving out partial filemap...")
-        with open(data_file, "wb") as f:
-            pickle.dump(filemap, f)
+        if changes:
+            vprint("green", "Saving out partial filemap...")
+            with open(data_file, "wb") as f:
+                pickle.dump(filemap, f)
     return filemap
 
 
