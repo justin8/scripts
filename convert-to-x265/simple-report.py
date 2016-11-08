@@ -67,11 +67,14 @@ def parse_per_season_statistics(filemap):
     statistics = {}
     for show in filemap:
         statistics[show] = {}
+        vprint("green", "Working in directory: %s" % show)
         for filename, metadata in filemap[show].items():
+            vprint("blue", "Parsing per-season statistics for %s" % filename)
             season = parse_season(filename)
             if season not in statistics[show]:
-                statistics[show][season] = {"episodes": 0, "quality": {}, "codec": {}}
+                statistics[show][season] = {"episodes": 0, "size": 0, "quality": {}, "codec": {}}
             statistics[show][season]["episodes"] += 1
+            statistics[show][season]["size"] += metadata["size"]
 
             for stat in ["quality", "codec"]:
                 if not metadata[stat] in statistics[show][season][stat]:
@@ -86,8 +89,9 @@ def parse_per_show_statistics(filemap):
     for show in filemap:
         for filename, metadata in filemap[show].items():
             if show not in statistics:
-                statistics[show] = {"episodes": 0, "quality": {}, "codec": {}}
+                statistics[show] = {"episodes": 0, "size": 0, "quality": {}, "codec": {}}
             statistics[show]["episodes"] += 1
+            statistics[show]["size"] += metadata["size"]
 
             for stat in ["quality", "codec"]:
                 if not metadata[stat] in statistics[show][stat]:
@@ -98,9 +102,10 @@ def parse_per_show_statistics(filemap):
 
 
 def parse_global_statistics(show_statistics):
-    statistics = {"episodes": 0, "codec": {}, "quality": {}}
+    statistics = {"episodes": 0, "size": 0, "codec": {}, "quality": {}}
     for metadata in show_statistics.values():
         statistics["episodes"] += metadata["episodes"]
+        statistics["size"] += metadata["size"]
         for stat in ["quality", "codec"]:
             for item in metadata[stat]:
                 if item not in statistics[stat]:
