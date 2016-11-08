@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 import argparse
+import hashlib
 import os
 import pickle
 import re
@@ -235,7 +236,13 @@ def update_filemap(data_file, filemap, directory):
 
 
 def main(args):
-    data_file = os.path.join(os.path.expanduser("~"), ".simple-report-data")
+    directory = os.path.realpath(args.directory)
+    data_file_name = hashlib.md5(bytes(directory, 'ascii')).hexdigest()
+    data_file_path = os.path.join(os.path.expanduser("~"), ".simple-report-data")
+    data_file = os.path.join(data_file_path, data_file_name)
+
+    if not os.path.exists(data_file_path):
+        os.mkdir(data_file_path)
 
     filemap = {}
     if os.path.exists(data_file) and not args.ignore_cache:
@@ -243,7 +250,7 @@ def main(args):
         with open(data_file, "rb") as f:
             filemap = pickle.load(f)
 
-    filemap = update_filemap(data_file, filemap, os.path.realpath(args.directory))
+    filemap = update_filemap(data_file, filemap, os.path.realpath(directory))
 
     if VERBOSE >= 2:
         cprint("green", "Complete map of files:")
