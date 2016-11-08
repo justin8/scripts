@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
 import argparse
 import os
 import pickle
 import re
-from copy import deepcopy
 
+from colorama import Fore, Style, init
 from pprint import pprint
 from pymediainfo import MediaInfo
-from colorama import Fore, Style, init
 from tqdm import tqdm
 
 init()
