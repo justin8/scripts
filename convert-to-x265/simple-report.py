@@ -309,7 +309,8 @@ def main(args):
         with open(data_file, "rb") as f:
             filemap = pickle.load(f)
 
-    filemap = update_filemap(data_file, filemap, os.path.realpath(directory))
+    if not args.output_only:
+        filemap = update_filemap(data_file, filemap, os.path.realpath(directory))
 
     if VERBOSE >= 2:
         cprint("green", "Complete map of files:")
@@ -345,6 +346,10 @@ if __name__ == "__main__":
                         action="count")
     parser.add_argument("-i", "--ignore-cache",
                         help="Ignore the cache and rebuild it",
+                        action="store_true")
+    parser.add_argument("-o", "--output-only",
+                        help="Just read the cache but don't update it at all",
+                        default=False,
                         action="store_true")
     parser.add_argument("directory",
                         help="The directory to read files from",
