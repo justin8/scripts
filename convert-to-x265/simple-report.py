@@ -166,6 +166,65 @@ def print_global_totals(global_statistics):
     print_metadata(global_statistics, indent=2)
 
 
+def save_html(show_statistics, global_statistics):
+    with open("simple-report.html", "w") as f:
+        f.write('<html><head><title>TV Shows codec report</title><style> \
+                 #shows {font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; border-collapse: collapse; width: 100%; } \
+                 #shows td {border: 1px solid \
+                 #ddd; padding: 8px; text-align: right} \
+                 #shows td.left {text-align: left} \
+                 #shows td.center {text-align: center} \
+                 #shows th {border: 1px solid #ddd; padding: 8px; text-align: center; padding-top: 12px; padding-bottom: 12px; background-color: #4CAF50; color: white; } \
+                 #shows tr:nth-child(even){background-color: #f2f2f2;} \
+                 #shows tr:hover {background-color: #ddd;}</style> \
+                 <script type="text/javascript" src="http://www.kryogenix.org/code/browser/sorttable/sorttable.js"></script></head>')
+        f.write('<html><body><table class="sortable" id="shows"><tr><th>Show</th><th>Codec progress</th><th>Quality progress</th><th>Size (GB)</th><th>Episodes</th><th>1080p</th><th>720p</th><th>SD</th><th>Unknown</th><th>x265</th><th>x264</th><th>Other</th></tr>')
+
+        for show, metadata in show_statistics.items():
+            f.write(metadata_to_table_row(show, metadata))
+
+        f.write('<tfoot><tr>%s%s%s%s%s%s%s%s%s%s%s%s</tr></tfoot>' % (
+            html_cell("TOTALS"),
+            html_cell(html_progress(global_statistics["codec"]["x265"] if "x265" in global_statistics["codec"] else 0, global_statistics["episodes"])),
+            html_cell(html_progress(global_statistics["quality"]["1080p"] if "1080p" in global_statistics["quality"] else 0, global_statistics["quality"])),
+            html_cell(global_statistics["size"]),
+            html_cell(global_statistics["episodes"]),
+            html_cell(global_statistics["quality"]["1080p"] if "1080p" in global_statistics["quality"] else 0),
+            html_cell(global_statistics["quality"]["720p"] if "720p" in global_statistics["quality"] else 0),
+            html_cell(global_statistics["quality"]["SD"] if "SD" in global_statistics["quality"] else 0),
+            html_cell(global_statistics["quality"]["Unknown"] if "Unknown" in global_statistics["quality"] else 0),
+            html_cell(global_statistics["codec"]["x265"] if "x265" in global_statistics["codec"] else 0),
+            html_cell(global_statistics["codec"]["x264"] if "x264" in global_statistics["codec"] else 0),
+            html_cell(global_statistics["codec"]["Other"] if "Other" in global_statistics["codec"] else 0)))
+        f.write('</table></body></html>')
+
+
+def html_cell(data):
+    return "<td>%s</td>" % data
+
+
+def html_progress(value, maximum):
+    return '<progress value="%s" max="%s"/>' % (value, maximum)
+
+
+def metadata_to_table_row(show, metadata):
+    out = "<tr>"
+    out += html_cell(os.path.basename(show))
+    out += html_cell(html_progress(metadata["codec"]["x265"] if "x265" in metadata["codec"] else 0, metadata["episodes"]))
+    out += html_cell(html_progress(metadata["quality"]["1080p"] if "1080p" in metadata["quality"] else 0, metadata["episodes"]))
+    out += html_cell("%3.1f %s" % (metadata["size"] / 1024 / 1024 / 1024, "GiB"))
+    out += html_cell(metadata["episodes"])
+    out += html_cell(metadata["quality"]["1080p"] if "1080p" in metadata["quality"] else 0)
+    out += html_cell(metadata["quality"]["720p"] if "720p" in metadata["quality"] else 0)
+    out += html_cell(metadata["quality"]["SD"] if "SD" in metadata["quality"] else 0)
+    out += html_cell(metadata["quality"]["Unknown"] if "Unknown" in metadata["quality"] else 0)
+    out += html_cell(metadata["codec"]["x265"] if "x265" in metadata["codec"] else 0)
+    out += html_cell(metadata["codec"]["x264"] if "x264" in metadata["codec"] else 0)
+    out += html_cell(metadata["codec"]["Other"] if "Other" in metadata["codec"] else 0)
+    out += "</tr>"
+    return out
+
+
 def get_videos_in_list(filenames):
     videos = []
     for video in filenames:
@@ -274,6 +333,8 @@ def main(args):
     print_show_totals(show_statistics)
     print()
     print_global_totals(global_statistics)
+
+    save_html(show_statistics, global_statistics)
 
 
 if __name__ == "__main__":
