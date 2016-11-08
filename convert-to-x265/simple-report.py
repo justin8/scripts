@@ -191,6 +191,7 @@ def update_filemap(data_file, filemap, directory):
         current_video = 0
         if VERBOSE == 0:
             videos = tqdm(videos)
+        changes = False
         for video in videos:
             if dirpath not in filemap:  # Only create if there are videos for this path
                 filemap[dirpath] = {}
@@ -203,6 +204,7 @@ def update_filemap(data_file, filemap, directory):
                     vprint("blue", "Using cache (%s/%s) %s" % (current_video, len(videos), video))
                     continue
                 vvprint("blue", "Filesize differs. Invalidating cache")
+            changes = True
             vprint("blue", "Parsing (%s/%s) %s" % (current_video, len(videos), video))
             metadata = MediaInfo.parse(video_path)
             for track in metadata.tracks:
