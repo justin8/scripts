@@ -173,7 +173,7 @@ if __name__ == "__main__":
                         action="store")
     parser.add_argument("-q", "--quality",
                         help="Quality quantizer",
-                        default=20,
+                        default=21,
                         action="store")
     parser.add_argument("-p", "--preset",
                         help="Encoding preset to use",
@@ -181,6 +181,7 @@ if __name__ == "__main__":
                         action="store")
     parser.add_argument("-e", "--extra-args",
                         help="Any extra arguments to pass to ffmpeg",
+                        default="",
                         action="store")
     parser.add_argument("-i", "--in-place",
                         help="Replace files in-place instead of appending ' x265' to the end",
