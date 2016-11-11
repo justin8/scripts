@@ -41,9 +41,9 @@ def is_video(f):
 
 
 def get_quality(track):
-    if track.width >= 1910 and track.width <= 1930:
+    if track.width >= 1900 and track.width <= 1930:
         return "1080p"
-    if track.width >= 1270 and track.width <= 1290:
+    if track.width >= 1260 and track.width <= 1290:
         return "720p"
     if track.width < 1000:
         return "SD"
@@ -59,9 +59,12 @@ def get_codec(track):
 
 
 def parse_season(filename):
-    shortname = os.path.basename(filename)
-    result = re.findall("[\s\.](?:(\d+)x\d+(?:[x-]\d+){0,2}|S(\d\d?)E\d\d?)[\s\.\-]", shortname)
-    return result[0][0] if result[0][0] else result[0][1]
+    try:
+        shortname = os.path.basename(filename)
+        result = re.findall("[\s\.](?:(\d+)x\d+(?:[x-]\d+){0,2}|S(\d\d?)E\d\d?)[\s\.\-]", shortname)
+        return result[0][0] if result[0][0] else result[0][1]
+    except:
+        raise Exception("Unable to parse season from file name")
 
 
 def parse_per_season_statistics(filemap):
