@@ -189,7 +189,7 @@ def save_html(show_statistics, global_statistics):
         f.write('<tfoot><tr>%s%s%s%s%s%s%s%s%s%s%s%s</tr></tfoot>' % (
             html_cell("TOTALS"),
             html_cell(html_progress(global_statistics["codec"]["x265"] if "x265" in global_statistics["codec"] else 0, global_statistics["episodes"])),
-            html_cell(html_progress(global_statistics["quality"]["1080p"] if "1080p" in global_statistics["quality"] else 0, global_statistics["quality"])),
+            html_cell(html_progress(global_statistics["quality"]["1080p"] if "1080p" in global_statistics["quality"] else 0, global_statistics["episodes"])),
             html_cell("%3.1f %s" % (global_statistics["size"] / 1024 / 1024 / 1024, "GiB")),
             html_cell(global_statistics["episodes"]),
             html_cell(global_statistics["quality"]["1080p"] if "1080p" in global_statistics["quality"] else 0),
