@@ -242,8 +242,17 @@ def get_videos_in_list(filenames):
 
 
 def prune_filemap(filemap):
+    cprint("green", "Checking for deleted files...")
     tempmap = deepcopy(filemap)
-    for dirpath in tempmap:
+    collection = tempmap
+    if VERBOSE == 0:
+        collection = tqdm(tempmap)
+    for dirpath in collection:
+        if not os.path.exists(dirpath):
+            vprint("blue", "Removing %s from cache" % dirpath)
+            del filemap[dirpath]
+            continue
+
         for video in tempmap[dirpath]:
             videopath = os.path.join(dirpath, video)
             if not os.path.exists(videopath):
@@ -253,7 +262,6 @@ def prune_filemap(filemap):
 
 
 def update_filemap(data_file, filemap, directory):
-    cprint("green", "Checking for deleted files...")
     filemap = prune_filemap(filemap)
     for dirpath, dirnames, filenames in os.walk(directory, followlinks=True):
         cprint("green", "Working in directory: %s" % dirpath)
