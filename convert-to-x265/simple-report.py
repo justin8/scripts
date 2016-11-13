@@ -281,7 +281,7 @@ def update_filemap(data_file, filemap, directory):
             current_video += 1
             if video in filemap[dirpath]:
                 vvprint("blue", "Found %s in cache..." % video)
-                if filemap[dirpath][video]["size"] == video_size:
+                if filemap[dirpath][video]["size"] == video_size and filemap[dirpath][video]["quality"] != 'Unknown':
                     vprint("blue", "Using cache (%s/%s) %s" % (current_video, len(videos), video))
                     continue
                 vvprint("blue", "Filesize differs. Invalidating cache")
