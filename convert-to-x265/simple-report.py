@@ -67,8 +67,9 @@ def parse_season(filename):
         shortname = os.path.basename(filename)
         result = re.findall("[\s\.](?:(\d+)x\d+(?:[x-]\d+){0,2}|S(\d\d?)E\d\d?)[\s\.\-]", shortname)
         return result[0][0] if result[0][0] else result[0][1]
-    except:
-        raise Exception("Unable to parse season from file name")
+    except Exception as e:
+        cprint("red", "Unable to parse season from file name (filename: \"%s\")" % shortname)
+        print(e)
 
 
 def parse_per_season_statistics(filemap):
