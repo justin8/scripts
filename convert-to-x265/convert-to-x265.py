@@ -137,11 +137,15 @@ def main(args):
                 outputs={outfile: "-y -threads 0 -vcodec libx265 -strict -2 -crf %s %s %s -preset %s -acodec libfdk_aac -ab 160k -ac 2" % (args.quality, scale, args.extra_args, args.preset)})
 
         try:
+            renamed_file = get_renamed_video_name(infile)
+            cprint("blue", "Testing if the output folder is writable...")
+            with open(renamed_file, 'w') as f:
+                f.writelines("test")
+            os.remove(renamed_file)
             cprint("blue", "Running ffmpeg command: '%s'" % ff.cmd)
             ff.run()
             cprint("green", "######################################")
             cprint("green", "Successfully converted '%s'" % infile)
-            renamed_file = get_renamed_video_name(infile)
             cprint("blue", "Moving to '%s'..." % renamed_file)
             shutil.move(outfile, renamed_file)
             if args.in_place:
