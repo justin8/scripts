@@ -1,4 +1,0 @@
-colorama==0.3.7
-ffmpy==0.2.2
-pymediainfo==2.1.5
-tqdm==4.9.0
