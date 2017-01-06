@@ -1,15 +1,21 @@
 #!/bin/bash
-export $(grep -z DBUS_SESSION_BUS_ADDRESS "/proc/$(pgrep -u $(whoami) ^gnome-shell$)/environ")
-export XDG_RUNTIME_DIR=/run/user/$UID
+LOCK="/tmp/$(basename "$(readlink -f "$0")").lock"
 
-for i in {1..60}; do
-	if [[ "$(pactl list | grep -A2 '^Sink' | grep RUNNING)" ]]; then
-		dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'nothing'"
-		dconf write /org/gnome/desktop/session/idle-delay 'uint32 0'
-		exit 0
-	fi
-	sleep 1
-done
+exec 200>"$LOCK"
 
-dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'suspend'"
-dconf write /org/gnome/desktop/session/idle-delay 'uint32 300'
+if flock -xn 200; then
+	export $(grep -z DBUS_SESSION_BUS_ADDRESS "/proc/$(pgrep -u $(whoami) ^gnome-shell$)/environ")
+	export XDG_RUNTIME_DIR=/run/user/$UID
+
+	for i in {1..60}; do
+		if [[ "$(pactl list | grep -A2 '^Sink' | grep RUNNING)" ]]; then
+			dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'nothing'"
+			dconf write /org/gnome/desktop/session/idle-delay 'uint32 0'
+			exit 0
+		fi
+		sleep 5
+	done
+
+	dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'suspend'"
+	dconf write /org/gnome/desktop/session/idle-delay 'uint32 300'
+fi
