@@ -9,7 +9,7 @@ restart_if_updated() {
 	fi
 }
 
-for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission colinhebert/pia-openvpn homeassistant/home-assistant aptalca/home-automation-bridge; do
+for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission colinhebert/pia-openvpn homeassistant/home-assistant; do
 	docker pull $image
 done
 
