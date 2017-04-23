@@ -22,6 +22,8 @@ restart_if_updated jenkins
 restart_if_updated plex-media-server plexmediaserver
 restart_if_updated docker
 
+systemctl restart mediaserver
+
 if grep -q 'nfs-utils' "$pacman_out"; then
 	echo 'WARNING: nfs-utils has updated. You probably have to reboot'
 fi
