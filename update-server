@@ -9,7 +9,7 @@ restart_if_updated() {
 	fi
 }
 
-for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission colinhebert/pia-openvpn homeassistant/home-assistant; do
+for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission linuxserver/jackett colinhebert/pia-openvpn homeassistant/home-assistant; do
 	docker pull $image
 done
 
@@ -21,10 +21,6 @@ systemctl daemon-reload
 restart_if_updated jenkins
 restart_if_updated plex-media-server plexmediaserver
 restart_if_updated docker
-
-script=/etc/cron.daily/hacky-fix-for-shit
-[[ -f $script ]] && $script
-
 
 if grep -q 'nfs-utils' "$pacman_out"; then
 	echo 'WARNING: nfs-utils has updated. You probably have to reboot'
