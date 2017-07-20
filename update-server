@@ -9,7 +9,7 @@ restart_if_updated() {
 	fi
 }
 
-for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission linuxserver/jackett colinhebert/pia-openvpn homeassistant/home-assistant; do
+for image in linuxserver/couchpotato linuxserver/sonarr linuxserver/transmission linuxserver/jackett colinhebert/pia-openvpn justin8/simple-proxy jwilder/docker-gen jrcs/letsencrypt-nginx-proxy-companion linuxserver/muximux nginx:alpine; do
 	docker pull $image
 done
 
@@ -18,7 +18,6 @@ pacman -Syu --noconfirm --force 2>&1|tee "$pacman_out"
 systemd-tmpfiles --create
 systemctl daemon-reload
 
-restart_if_updated jenkins
 restart_if_updated plex-media-server plexmediaserver
 restart_if_updated docker
 
