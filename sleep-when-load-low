@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+
+LOAD15 = os.getloadavg()[2]
+LOAD_LIMIT = 0.5
+
+if LOAD15 > LOAD_LIMIT:
+    print("15m Load average is at {}. Below the limit of {}. Suspending".format(LOAD15, LOAD_LIMIT)
+    subprocess.check_output(["systemctl", "suspend"])
+else:
+    print("15m Load average is at {}. Above the limit of {}. Not suspending".format(LOAD15, LOAD_LIMIT)
