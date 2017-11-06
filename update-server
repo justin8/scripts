@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# NOTE:
+#  You may need to user downgrader to downgrade linux-lts to be compatible with zfs-linux-lts-git
+
 # Restart $app if $package was updated
 restart_if_updated() {
 	package=$1
@@ -27,3 +30,4 @@ if grep -q 'Building image from preset:' "$pacman_out"; then
 	echo 'The following kernel packages updated:'
 	grep -o '^upgrading linux-[^.]*' "$pacman_out" | awk '{print $2}'
 fi
+
