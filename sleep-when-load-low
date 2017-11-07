@@ -2,12 +2,32 @@
 
 import os
 import subprocess
+import psutil
 
-LOAD15 = os.getloadavg()[2]
+LOAD15 = os.getloadavg()[1]
 LOAD_LIMIT = 0.5
 
+
+def plex_is_streaming():
+    pid = None
+    for proc in psutil.process_iter():
+        if proc.name() == "Plex Media Server":
+            pid = proc.pid
+            break
+
+    proc = psutil.Process(pid)
+    local_connections = [x for x in proc.connections() if x.raddr and x.raddr.ip.startswith("192.168")]
+
+    return bool(local_connections)
+
+
 if LOAD15 < LOAD_LIMIT:
-    print("15m Load average is at {}. Below the limit of {}. Suspending".format(LOAD15, LOAD_LIMIT))
-    subprocess.check_output(["systemctl", "suspend"])
+    print("15m Load average is at {}. Below the limit of {}. Checking Plex connectivity".format(LOAD15, LOAD_LIMIT))
+    if not plex_is_streaming():
+        print("Plex is not streaming. Suspending")
+        subprocess.check_output(["systemctl", "suspend"])
+    else:
+        print("Plex is streaming. Not suspending")
+
 else:
     print("15m Load average is at {}. Above the limit of {}. Not suspending".format(LOAD15, LOAD_LIMIT))
