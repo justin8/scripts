@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import os
-import subprocess
 import psutil
+import subprocess
+import sys
 
 LOAD15 = os.getloadavg()[1]
 LOAD_LIMIT = 0.5
@@ -21,13 +22,25 @@ def plex_is_streaming():
     return bool(local_connections)
 
 
+def ssh_connections_are_active():
+    ssh_procs = [proc for proc in psutil.process_iter() if proc.name() == "sshd"]
+    procs_with_open_connections = []
+    for proc in ssh_procs:
+        procs_with_open_connections += [x for x in proc.connections() if x.raddr]
+    return bool(procs_with_open_connections)
+
+
 if LOAD15 < LOAD_LIMIT:
     print("15m Load average is at {}. Below the limit of {}. Checking Plex connectivity".format(LOAD15, LOAD_LIMIT))
     if not plex_is_streaming():
-        print("Plex is not streaming. Suspending")
-        subprocess.check_output(["systemctl", "suspend"])
+        print("Plex is not streaming. Checking if SSH connections are active")
+        if not ssh_connections_are_active():
+            print("No active SSH connections. Suspending")
+            #subprocess.check_output(["systemctl", "suspend"])
+            sys.exit(0)
+        else:
+            print("SSH connections are active. Not suspending")
     else:
         print("Plex is streaming. Not suspending")
-
 else:
     print("15m Load average is at {}. Above the limit of {}. Not suspending".format(LOAD15, LOAD_LIMIT))
