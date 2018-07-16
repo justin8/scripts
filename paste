@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+import pyautogui
+import sys
+import time
+
+time.sleep(2)
+pyautogui.typewrite(sys.argv[1])
