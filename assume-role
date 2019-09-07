@@ -1,5 +1,14 @@
 #!/bin/bash
 
+if [[ $1 == --disable ]]; then
+	cat <<-EOF
+		unset AWS_ACCESS_KEY_ID
+		unset AWS_SECRET_ACCESS_KEY
+		unset AWS_SESSION_TOKEN
+	EOF
+	exit 0
+fi
+
 response="$(aws sts assume-role --role-arn "$1" --role-session-name "something" | jq .Credentials)"
 
 AWS_ACCESS_KEY_ID="$(echo "$response" | jq -r .AccessKeyId)"
