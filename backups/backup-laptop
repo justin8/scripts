@@ -1,0 +1,7 @@
+#!/bin/bash
+AWS="/Users/jdray/.pyenv/shims/aws"
+PATHS=("$HOME/Library/ApplicationSupport/Firefox")
+
+for path in "${PATHS[@]}"; do
+    $AWS s3 sync --delete --exclude "*.sqlite-wal" --exclude "cookies.sqlite" "$path" "s3://jdray-macbook-backup$path"
+done
