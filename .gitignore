@@ -1,3 +1,7 @@
 .idea
 *.pyc
 *.sw[op]
+credentials.json
+client_secret.json
+sheets.googleapis.com-python.json
+.vscode
