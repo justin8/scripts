@@ -1,5 +1,7 @@
 #!/bin/bash
 
+
+
 if [[ -z $1 ]]
 then
 	echo "Please provide a hostname, IP address or line number to remove from your known_hosts file"
@@ -11,7 +13,7 @@ then
     line=$1
 else
     hostname=${1##*@}
-    ip=$(nslookup "$hostname" | grep 'Address' | grep -v '#' | awk '{print $2}')
+    ips=$(nslookup "$hostname" | grep 'Address' | grep -v '#' | awk '{print $2}')
 fi
 
 if [[ -n $line ]]
@@ -19,8 +21,10 @@ then
 	sed -i "${line}d" "$HOME/.ssh/known_hosts"
 else
 	sed -i "/^${hostname}/d" "$HOME/.ssh/known_hosts"
-	if [[ -n $ip ]]
+	if [[ -n $ips ]]
 	then
-		sed -i "/${ip}/d" "$HOME/.ssh/known_hosts"
+		for ip in $ips; do
+			sed -i "/${ip}/d" "$HOME/.ssh/known_hosts"
+		done
 	fi
 fi
