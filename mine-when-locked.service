@@ -1,0 +1,9 @@
+[Unit]
+Description="Run miner while lock screen is active"
+
+[Service]
+ExecStart=%h/.scripts/mine-when-locked 0xd809cD2e2e2655599C2b1DbCdCa50401579854a0
+
+[Install]
+WantedBy=default.target
+

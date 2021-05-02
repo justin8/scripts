@@ -1,0 +1,45 @@
+#!/bin/bash
+
+SCREEN_SESSION_NAME="miner"
+WALLET_ADDRESS="$1"
+LOGFILE="/tmp/miner-log"
+
+stop_miner() {
+	echo "Stopping miner..."
+	screen -S $SCREEN_SESSION_NAME -X stuff "^C"
+}
+
+start_miner() {
+	screen -dmS "$SCREEN_SESSION_NAME" -L -Logfile "$LOGFILE" PhoenixMiner -pool asia1.ethermine.org:4444 -wal "$WALLET_ADDRESS" -worker asus -epsw x -mode 1 -log 0 -mport 0 -etha 0 -ftime 55 -retrydelay 1 -tt 79 -tstop 89  -coin eth
+}
+
+if [[ ! $WALLET_ADDRESS ]]; then
+	echo "You must pass a wallet address to start"
+	exit 1
+fi
+
+# Cleanup existing screen sessions
+sessions="$(screen -list|grep -P '^\s+'| grep -oP '(?<=\d{5}\.).*?(?=\s+)')"
+if [[ "$sessions" ]]; then
+	for session in $sessions; do
+		echo "Found existing screen session '$session'"
+		if [[ $session == $SCREEN_SESSION_NAME ]]; then
+			stop_miner
+		fi
+	done
+fi
+
+
+dbus-monitor --session "type='signal',interface='org.gnome.ScreenSaver'" | while read line; do
+	echo "New message: $line"
+	case "$line" in
+		*"boolean true"*)
+			echo "Lock screen active, starting to mine..."
+			start_miner
+			;;
+		*"boolean false"*)
+			echo "Lock screen inactive, stopping miner..."
+			stop_miner
+			;;
+	esac
+done
