@@ -1,3 +1,15 @@
 #!/bin/bash
-export $(cat /proc/$(pgrep -u $(whoami) ^gnome-shell$)/environ | grep -z DBUS_SESSION_BUS_ADDRESS)
-DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri file://"$(find ~/Backgrounds -type f | shuf -n1)"
+
+BACKGROUND_FILE="$(find ~/Backgrounds -type f | shuf -n1)"
+
+# This was needed before, but seems to break when used within cron on modern (mid-2021) systemd
+#export $(cat /proc/$(pgrep -u $(whoami) ^gnome-shell$)/environ | grep -z DBUS_SESSION_BUS_ADDRESS)
+
+# This is what the above resolved to but more statically; setting this breaks the gsettings command on mid-2021+ systems
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID/bus"
+
+# Change with gsettings
+DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri "file://$BACKGROUND_FILE"
+
+# Change directly with dconf
+#DISPLAY=:0 dconf write /org/gnome/desktop/background/picture-uri "'file://$BACKGROUND_FILE'"
