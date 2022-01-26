@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+#
+# This is pretty much a poor man's SyncSaber. I wrote this one day when
+# SyncSaber decided it would just flash "done" and not download things any
+# more and I'd had enough of dealing with it. So, here it is!
+#
+
 
 from dataclasses import dataclass
 from collections.abc import Sequence
