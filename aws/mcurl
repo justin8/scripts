@@ -1,0 +1,4 @@
+#!/bin/bash
+
+curl "$@" -L --cookie ~/.midway/cookie --cookie-jar ~/.midway/cookie
+
