@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [[ $EUID != 0 ]]; then
+    echo "You must run this script as root!"
+	exit 1
+fi
+
+sleep_time=5
+devices="$(networksetup -listallnetworkservices | grep -v 'asterisk')"
+
+echo Disabling all network devices
+echo "$devices" | while read -r device; do
+    networksetup -setv4off "$device"
+done
+
+echo Waiting $sleep_time seconds
+sleep $sleep_time
+
+echo Re-enabling DHCP for all network devices
+echo "$devices" | while read -r device; do
+	networksetup -setdhcp Wi-Fi
+done
