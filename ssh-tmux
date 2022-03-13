@@ -1,0 +1,5 @@
+#!/bin/bash
+
+function ssh-tmux() {
+	ssh -XY "$1" -Ct 'sh -l -c "exec tmux -CC -u new-session -AD -s remote"'
+}
