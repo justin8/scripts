@@ -18,5 +18,5 @@ sleep $sleep_time
 
 echo Re-enabling DHCP for all network devices
 echo "$devices" | while read -r device; do
-	networksetup -setdhcp Wi-Fi
+	networksetup -setdhcp "$device"
 done
