@@ -10,6 +10,7 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID/bus"
 
 # Change with gsettings
 DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri "file://$BACKGROUND_FILE"
+DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri-dark "file://$BACKGROUND_FILE"
 
 # Change directly with dconf
 #DISPLAY=:0 dconf write /org/gnome/desktop/background/picture-uri "'file://$BACKGROUND_FILE'"
