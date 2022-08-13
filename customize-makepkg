@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ -e "$HOME/.customizepkg/$(basename $(pwd))" ]]; then
+	customizepkg --modify >&2
+fi
+
+exec makepkg ${@}
