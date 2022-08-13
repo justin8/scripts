@@ -1,7 +1,10 @@
 #!/bin/bash
 
-if [[ -e "$HOME/.customizepkg/$(basename $(pwd))" ]]; then
-	customizepkg --modify >&2
+if [[ ${@} =~ --noconfirm ]]; then
+	# Only execute on the build command
+	if [[ -e "$HOME/.customizepkg/$(basename $(pwd))" ]]; then
+		customizepkg --modify >&2
+	fi
 fi
 
 exec makepkg ${@}
