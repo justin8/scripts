@@ -1,0 +1,12 @@
+#!/bin/bash
+
+OS=linux
+MWINIT_FLAGS="-o"
+
+if [[ $(uname -a) =~ Darwin ]]; then
+    OS=mac
+    MWINIT_FLAGS=""
+fi
+
+mwinit $MWINIT_FLAGS
+ada cred update --once
