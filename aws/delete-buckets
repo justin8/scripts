@@ -11,6 +11,10 @@ for bucket_name in sys.argv[1:]:
     try:
         response = bucket.objects.all().delete()
         print(f"Response: {response}")
+
+        print("Deleting previous versions...")
+        bucket.object_versions.all().delete()
+
         print(f"Deleting bucket {bucket_name}...")
         response = bucket.delete()
         print(f"Response: {response}")
