@@ -1,11 +1,11 @@
 #!/bin/bash
 
 OS=linux
-MWINIT_FLAGS="-o"
+MWINIT_FLAGS="--aea -s"
 
-if [[ $(uname -a) =~ Darwin ]]; then
+if [[ $(uname -a) =~ Linux ]]; then
     OS=mac
-    MWINIT_FLAGS=""
+    MWINIT_FLAGS="$MWINIT_FLAGS -o"
 fi
 
 mwinit $MWINIT_FLAGS
