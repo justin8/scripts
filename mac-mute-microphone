@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function set_volume() {
+  osascript -e "set volume input volume $1"
+}
+
+current_volume="$(osascript -e 'input volume of (get volume settings)')"
+
+if [[ $current_volume -gt 0 ]]; then
+  osascript -e 'display notification "Microphone muted" with title "Microphone muted"'
+  set_volume 0
+else
+  osascript -e 'display notification "Microphone unmuted" with title "Microphone unmuted"'
+  set_volume 100
+fi
