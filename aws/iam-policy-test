@@ -1,0 +1,18 @@
+#!/bin/bash
+
+ROLE_ARN=$1
+POLICY=$2
+SESSION_NAME=$3
+
+if [ -z "${POLICY}" ]; then
+  POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}'
+fi
+
+if [ -z $SESSION_NAME ]; then
+  SESSION_NAME="setenv-role-session"
+fi
+
+aws sts assume-role --role-arn ${ROLE_ARN} --role-session-name ${SESSION_NAME} --policy "${POLICY}" --output text --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' | awk '{print "export AWS_ACCESS_KEY_ID="$1"\nexport AWS_SECRET_ACCESS_KEY="$2"\nexport AWS_SESSION_TOKEN="$3}'
+echo "AWS_SESSION_ROLE_ARN=${ROLE_ARN}"
+echo "AWS_SESSION_NAME=${SESSION_NAME}"
+echo "AWS_SESSION_SCOPEDOWN_POLICY='"${POLICY}"'"
