@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if ! which ffsubsync &>/dev/null; then
+  echo "ffsubsync isn't available, install with 'pip install ffsubsync'"
+fi
+
+target_folder=$1
+
+if ! [[ -e $target_folder ]]; then
+  echo "The specified file/folder does not exist"
+  exit 1
+fi
+
+find "$target_folder" -iname '*.srt' | while read -r subtitle; do
+
+  video_file="$(echo "${subtitle%%.*.srt}".???)" # some subtitles will have a 2 letter language code before the file extension, e.g. '.en.srt'
+
+  ffsubsync -i "$subtitle" --overwrite-input "$video_file"
+done
