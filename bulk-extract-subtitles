@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+
+if ! which ffmpeg &>/dev/null; then
+  echo "ffmpeg isn't available, please install it"
+fi
+
+target_folder=$1
+
+if ! [[ -e $target_folder ]]; then
+  echo "The specified file/folder does not exist"
+  exit 1
+fi
+
+find "$target_folder" -type f -regextype posix-extended -regex '.*\.(mkv|mp4|avi|m4v)' | while read -r video; do
+
+  echo "Processing video: $video"
+  mapping="0:s:m:language:eng" # Default to auto-detect english subtitles when only one exists
+  subtitle_file="${video%.*}.en.srt"
+
+  english_subtitles="$(mediainfo --output=JSON "$video" | jq '[.media.track[] | select(."@type"=="Text") | select(.Language=="en")]')"
+  number_of_english_subtitles="$(echo "$english_subtitles" | jq length)"
+  if [[ $number_of_english_subtitles -lt 1 ]]; then
+    echo "SKIPPING: Found no english subtitles, skipping this file"
+    continue
+  elif [[ $number_of_english_subtitles -gt 1 ]]; then
+    echo "Found more than 1 english subtitle stream, trying to determine which one is most correct"
+    default_subtitles="$(echo $english_subtitles | jq '.[] | select(.Default=="Yes")')"
+    if [[ -n $default_subtitles ]]; then
+      stream_id="$(echo "$default_subtitles" | jq -r '.StreamOrder')"
+      echo "Found english subtitle stream marked as default (stream #${stream_id})"
+      mapping="0:s:$stream_id"
+    else
+      echo "SKIPPING: Cannot determine correct subtitle, skipping this file"
+      continue
+    fi
+  fi
+
+  echo ffmpeg -nostdin -y -i "$video" -map $mapping "$subtitle_file"
+done
