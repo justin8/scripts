@@ -7,4 +7,4 @@ LATEST_SNAPSHOT="$(ls -rt1 $ORIGINAL_SOURCE/.snapshots | tail -n1)"
 
 SOURCE=$ORIGINAL_SOURCE/.snapshots/$LATEST_SNAPSHOT/snapshot/
 
-rclone sync $SOURCE/  B2:jdray-backups$ORIGINAL_SOURCE/ --filter-from $ORIGINAL_SOURCE/.backup-filter --dry-run
+rclone sync $SOURCE/  B2:jdray-backups$ORIGINAL_SOURCE/ --filter-from $ORIGINAL_SOURCE/.backup-filter --copy-links
