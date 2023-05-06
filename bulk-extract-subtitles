@@ -18,6 +18,11 @@ find "$target_folder" -type f -regextype posix-extended -regex '.*\.(mkv|mp4|avi
   mapping="0:s:m:language:eng" # Default to auto-detect english subtitles when only one exists
   subtitle_file="${video%.*}.en.srt"
 
+  if [[ -e "$subtitle_file" ]]; then
+    echo "SKIPPING: Subtitle already exists for this video, skipping."
+    continue
+  fi
+
   english_subtitles="$(mediainfo --output=JSON "$video" | jq '[.media.track[] | select(."@type"=="Text") | select(.Language=="en")]')"
   number_of_english_subtitles="$(echo "$english_subtitles" | jq length)"
   if [[ $number_of_english_subtitles -lt 1 ]]; then
