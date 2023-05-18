@@ -11,10 +11,16 @@ if [[ -z $1 ]]; then
 	exit 1
 fi
 
-if [[ -n $https ]]; then
-	url="https://github.com/$1"
+if [[ $1 =~ / ]]; then
+	# Github
+	if [[ -n $https ]]; then
+		url="https://github.com/$1"
+	else
+		url="git@github.com:$1"
+	fi
 else
-	url="git@github.com:$1"
+	# Not github
+	url="ssh://git.amazon.com/pkg/$1"
 fi
 
 shift
