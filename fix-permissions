@@ -1,9 +1,10 @@
 #!/bin/bash
 
 if [ $# -lt 3 ] ; then
-	echo "Usage: fix-permissions.sh <folder> <dir permissions> <file permissions>"
+	echo "Usage: fix-permissions.sh <owner/group> <dir permissions> <file permissions> <path>"
 	exit 1
 fi
 
-find $1 -type d -exec chmod $2 "{}" \;
-find $1 -type f -exec chmod $3 "{}" \;
+chown -R $1 "$4"
+find "$4" -type d -exec chmod $2 "{}" \;
+find "$4" -type f -exec chmod $3 "{}" \;
