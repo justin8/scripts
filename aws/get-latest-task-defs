@@ -1,0 +1,11 @@
+#!/bin/bash
+
+while read -r family; do
+	latest="$(aws ecs list-task-definitions --status ACTIVE --family-prefix $family --output text | tail -n1 | cut -f2 -d$'\t')"
+	if [[ -z $latest ]]; then
+		echo "No task definitions found for family $family"
+		continue
+	fi
+	echo "$latest:"
+	aws ecs describe-task-definition --task-definition "$latest"
+done < <(aws ecs list-task-definition-families --output text | cut -f2 -d$'\t')
