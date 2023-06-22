@@ -8,7 +8,7 @@ import tempfile
 import zipfile
 from collections import Counter
 from pathlib import Path
-
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 import click
@@ -60,32 +60,70 @@ def backoff_retry_session(
     return session
 
 
-def download_images(url):
+def download_image(img_url, save_directory):
     """
-    Downloads images from a webpage specified by the given URL. Only images with source URLs containing '/uploads' are
-    considered for download. The downloaded images are saved to a temporary directory.
+    Downloads an image from the specified URL and saves it to the given directory.
 
     Args:
-        url (str): The URL of the webpage from which images should be downloaded.
+        img_url (str): The URL of the image to download.
+        save_directory (str): The directory where the downloaded image will be saved.
 
     Returns:
-        str: The path to the temporary directory where the downloaded images are saved.
+        None
 
     Raises:
-        Exception: If there is an error during the download process or if the temporary directory cannot be created.
+        Any exceptions raised during the download process will be propagated.
+
+    The function downloads an image from the provided URL using a GET request with backoff and retry
+    functionality. The image is then saved to the specified directory.
 
     Example:
-        url = "https://example.com/gallery"
-        save_directory = download_images(url)
-        print(save_directory)
-        # Output: "/tmp/tmpdir123456"
+        download_image("https://example.com/image.jpg", "/path/to/save/directory")
 
-    Note:
-        The function relies on the 'backoff_retry_session' function, 'find_prefix' function, 'tempfile' module, 'os' module,
-        and 'shutil' module. Make sure these dependencies are defined and available before calling 'download_images'.
     """
 
-    required_path_string = "/uploads"
+    # Extract the filename from the image URL
+    filename = img_url.split("/")[-1]
+
+    # Send a GET request to the image URL with backoff and retry
+    with backoff_retry_session() as session:
+        img_response = session.get(img_url)
+
+    # Save the image to the specified directory
+    save_path = os.path.join(save_directory, filename)
+    with open(save_path, "wb") as f:
+        f.write(img_response.content)
+    logging.info("Downloaded: %s", filename)
+
+
+def download_images(url):
+    """
+    Downloads images from a webpage based on the provided URL.
+
+    Args:
+        url (str): The URL of the webpage to download images from.
+
+    Returns:
+        str: The path of the directory where the downloaded images are saved.
+
+    Raises:
+        Any exceptions raised during the download process will be propagated.
+
+    The function sends a GET request to the specified URL, parses the HTML content using BeautifulSoup,
+    and finds all <img> tags in the parsed HTML. It extracts the source URLs of the images and filters
+    them based on the provided `path_filters` list. The function then creates a temporary directory to
+    save the downloaded images.
+
+    Multiple images are downloaded concurrently using a ThreadPoolExecutor. The function submits download
+    tasks to the executor and waits for all tasks to complete. If any exception occurs during the download,
+    the temporary directory is removed. Finally, the function returns the path of the directory where the
+    downloaded images are saved.
+
+    Example:
+        download_images("https://example.com/gallery")
+    """
+
+    path_filters = ["/uploads", "/images"]
 
     session = backoff_retry_session()
 
@@ -97,7 +135,9 @@ def download_images(url):
 
     # Find all <img> tags in the parsed HTML
     img_tags = soup.find_all("img")
-    image_urls = [img["src"] for img in img_tags if required_path_string in img["src"]]
+    image_urls = [img["src"] for img in img_tags if any(value in img["src"] for value in path_filters) ]
+    logging.debug("Found the following image URLs: %s", image_urls)
+
     image_prefix = find_prefix(image_urls)
     image_urls = [url for url in image_urls if image_prefix in url]
 
@@ -106,18 +146,15 @@ def download_images(url):
 
     # Download images with source URLs containing '/uploads'
     try:
-        for img_url in image_urls:
-            # Extract the filename from the image URL
-            filename = img_url.split("/")[-1]
-
-            # Send a GET request to the image URL with backoff and retry
-            img_response = session.get(img_url)
-
-            # Save the image to the specified directory
-            save_path = os.path.join(save_directory, filename)
-            with open(save_path, "wb") as f:
-                f.write(img_response.content)
-                logging.info("Downloaded: %s", filename)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # Submit download tasks to the executor
+            download_tasks = [
+                executor.submit(download_image, img_url, save_directory)
+                for img_url in image_urls
+            ]
+            # Wait for all tasks to complete
+            for task in download_tasks:
+                task.result()
     except:
         shutil.rmtree(save_directory)
     return save_directory
@@ -213,7 +250,10 @@ def find_prefix(urls):
         file = url.split("/")[-1]
         prefixes.append(file[0:12])
 
-    return Counter(prefixes).most_common()[0][0]
+    most_common = Counter(prefixes).most_common()[0][0]
+    logging.debug("Found prefix %s", most_common)
+
+    return most_common
 
 
 @click.command()
