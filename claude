@@ -41,6 +41,7 @@ def main():
     while True:
         if context == "" and len(sys.argv) > 1:
             user_input = " ".join(sys.argv[1:])
+            print(f"> {user_input}")
         else:
             user_input = input("> ")
 
