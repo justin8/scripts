@@ -39,7 +39,11 @@ def main():
     print("Hello! I am an AI assistant. Enter 'quit' or 'exit' at any time to exit. How may I help you today?")
 
     while True:
-        user_input = input("> ")
+        if context == "" and len(sys.argv) > 1:
+            user_input = " ".join(sys.argv[1:])
+        else:
+            user_input = input("> ")
+
         if user_input.lower() == "quit" or user_input.lower() == "exit":
             print("Goodbye!")
             sys.exit()
@@ -48,7 +52,7 @@ def main():
         response = claude(prompt)
 
         print(response)
-        context += f"\nHuman: {user_input}\nAssistant: {response}"
+        context += f"\n\nHuman: {user_input}\n\nAssistant: {response}"
 
 
 if __name__ == "__main__":
