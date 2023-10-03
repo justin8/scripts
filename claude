@@ -12,7 +12,7 @@ console = Console()
 
 def claude(prompt):
     with console.status("[bold green]Waiting for response..."):
-        response = bedrock.invoke_model(
+        response = bedrock.invoke_model_with_response_stream(
             modelId="anthropic.claude-v2",
             body=json.dumps(
                 {
@@ -27,10 +27,7 @@ def claude(prompt):
             ),
         )
 
-    body = json.loads(response["body"].read())
-    output = body["completion"]
-
-    return output
+    return response["body"]
 
 
 def main():
@@ -39,20 +36,29 @@ def main():
     print("Hello! I am an AI assistant. Enter 'quit' or 'exit' at any time to exit. How may I help you today?")
 
     while True:
+        print()
         if context == "" and len(sys.argv) > 1:
             user_input = " ".join(sys.argv[1:])
             print(f"> {user_input}")
         else:
             user_input = input("> ")
 
+        print()
         if user_input.lower() == "quit" or user_input.lower() == "exit":
             print("Goodbye!")
             sys.exit()
 
         prompt = f"{context}\n\nHuman: {user_input}\n\nAssistant:"
-        response = claude(prompt)
+        stream = claude(prompt)
 
-        print(response)
+        response = ""
+        for raw_event in stream:
+            event = json.loads(raw_event["chunk"]["bytes"])
+            output = event["completion"]
+            response += output
+            print(output, end="")
+
+        print()
         context += f"\n\nHuman: {user_input}\n\nAssistant: {response}"
 
 
