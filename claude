@@ -4,41 +4,71 @@ import json
 import sys
 
 import boto3
+import click
 from rich.console import Console
+from rich.markdown import Markdown
 
 bedrock = boto3.client("bedrock-runtime")
 console = Console()
 
 
-def claude(prompt):
+def claude(streaming: bool, prompt):
+    modelId = "anthropic.claude-v2"
+    body = json.dumps(
+        {
+            "prompt": prompt,
+            "max_tokens_to_sample": 300,
+            "temperature": 1,
+            "top_k": 250,
+            "top_p": 0.999,
+            "stop_sequences": ["\n\nHuman:"],
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+    )
+
     with console.status("[bold green]Waiting for response..."):
-        response = bedrock.invoke_model_with_response_stream(
-            modelId="anthropic.claude-v2",
-            body=json.dumps(
-                {
-                    "prompt": prompt,
-                    "max_tokens_to_sample": 300,
-                    "temperature": 1,
-                    "top_k": 250,
-                    "top_p": 0.999,
-                    "stop_sequences": ["\n\nHuman:"],
-                    "anthropic_version": "bedrock-2023-05-31",
-                }
-            ),
-        )
+        if streaming:
+            response = bedrock.invoke_model_with_response_stream(modelId=modelId, body=body)
 
-    return response["body"]
+            event_stream = response["body"]
+            output = streaming_print(event_stream)
+
+        else:
+            response = bedrock.invoke_model(modelId=modelId, body=body)
+            body = json.loads(response["body"].read())
+            output = body["completion"]
+
+            formatted_print(output)
+
+    return output
 
 
-def main():
+def streaming_print(event_stream):
+    output = ""
+    for raw_event in event_stream:
+        event = json.loads(raw_event["chunk"]["bytes"])
+        chunk = event["completion"]
+        output += chunk
+        print(chunk, end="")
+    return output
+
+
+def formatted_print(text):
+    console.print(Markdown(text))
+
+
+@click.command()
+@click.option("--streaming", is_flag=True, help="Enables streaming mode")
+@click.argument("args", nargs=-1)
+def main(streaming, args):
     context = ""
 
     print("Hello! I am an AI assistant. Enter 'quit' or 'exit' at any time to exit. How may I help you today?")
 
     while True:
         print()
-        if context == "" and len(sys.argv) > 1:
-            user_input = " ".join(sys.argv[1:])
+        if context == "" and args:
+            user_input = " ".join(args)
             print(f"> {user_input}")
         else:
             user_input = input("> ")
@@ -49,14 +79,8 @@ def main():
             sys.exit()
 
         prompt = f"{context}\n\nHuman: {user_input}\n\nAssistant:"
-        stream = claude(prompt)
 
-        response = ""
-        for raw_event in stream:
-            event = json.loads(raw_event["chunk"]["bytes"])
-            output = event["completion"]
-            response += output
-            print(output, end="")
+        response = claude(streaming, prompt)
 
         print()
         context += f"\n\nHuman: {user_input}\n\nAssistant: {response}"
