@@ -1,12 +1,37 @@
 #!/bin/bash
 
-OS=linux
 MWINIT_FLAGS="--aea -s"
 
 if [[ $(uname -a) =~ Linux ]]; then
-    OS=mac
-    MWINIT_FLAGS="$MWINIT_FLAGS -o"
+	OS=linux
+	MWINIT_FLAGS="$MWINIT_FLAGS -o"
+else
+	stat() {
+		gstat "$@"
+	}
 fi
 
-mwinit $MWINIT_FLAGS
+
+mwinit_until_success() {
+	mwinit_life_mins=1200
+	cookie="${HOME}/.midway/cookie"
+	if [[ -e $cookie ]]; then
+		age_mins=$((($(date +%s) - $(stat "${cookie}" -c %Y)) / 60))
+	fi
+
+	if [[ ! -e $cookie || $age_mins -gt $mwinit_life_mins ]]; then
+		echo "Midway authentication required"
+		mwinit $MWINIT_FLAGS
+		ret=$?
+		while [ $ret != 0 ]; do
+			echo "Midway authentication failed. Please try again."
+			mwinit $MWINIT_FLAGS
+			ret=$?
+		done
+	else
+		echo "Midway authentication is up-to-date"
+	fi
+}
+
+mwinit_until_success
 ada cred update --once
