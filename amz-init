@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MWINIT_FLAGS="--aea -s"
+MWINIT_FLAGS="-s"
 
 if [[ $(uname -a) =~ Linux ]]; then
 	OS=linux
