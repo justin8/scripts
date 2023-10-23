@@ -64,6 +64,7 @@ def main(streaming, args):
     context = ""
 
     print("Hello! I am an AI assistant. Enter 'quit' or 'exit' at any time to exit. How may I help you today?")
+    print("(You can clear existing context by starting a query with 'new>')")
 
     while True:
         print()
@@ -77,6 +78,8 @@ def main(streaming, args):
         if user_input.lower() == "quit" or user_input.lower() == "exit":
             print("Goodbye!")
             sys.exit()
+        if user_input.lower().startswith("new>"):
+            context = ""
 
         prompt = f"{context}\n\nHuman: {user_input}\n\nAssistant:"
 
