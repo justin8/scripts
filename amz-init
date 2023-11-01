@@ -13,7 +13,7 @@ fi
 
 
 mwinit_until_success() {
-	mwinit_life_mins=1200
+	mwinit_life_mins=960
 	cookie="${HOME}/.midway/cookie"
 	if [[ -e $cookie ]]; then
 		age_mins=$((($(date +%s) - $(stat "${cookie}" -c %Y)) / 60))
