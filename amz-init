@@ -19,7 +19,7 @@ mwinit_until_success() {
 		age_mins=$((($(date +%s) - $(stat "${cookie}" -c %Y)) / 60))
 	fi
 
-	if [[ ! -e $cookie || $age_mins -gt $mwinit_life_mins ]]; then
+	if [[ ! -e $cookie || $age_mins -gt $mwinit_life_mins || $1 == '-f' ]]; then
 		echo "Midway authentication required"
 		mwinit $MWINIT_FLAGS
 		ret=$?
@@ -33,5 +33,5 @@ mwinit_until_success() {
 	fi
 }
 
-mwinit_until_success
+mwinit_until_success $@
 ada cred update --once
