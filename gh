@@ -11,7 +11,9 @@ if [[ -z $1 ]]; then
 	exit 1
 fi
 
-if [[ $1 =~ / ]]; then
+if [[ $1 =~ /.*/ ]]; then
+	url="$1"
+elif [[ $1 =~ / ]]; then
 	# Github
 	if [[ -n $https ]]; then
 		url="https://github.com/$1"
@@ -19,7 +21,7 @@ if [[ $1 =~ / ]]; then
 		url="git@github.com:$1"
 	fi
 else
-	# Not github
+	# Not github and no slashes
 	url="ssh://git.amazon.com/pkg/$1"
 fi
 
