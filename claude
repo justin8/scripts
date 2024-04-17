@@ -2,6 +2,8 @@
 
 import json
 import sys
+from enum import Enum
+from typing import Dict, List
 
 import boto3
 import click
@@ -12,12 +14,27 @@ bedrock = boto3.client("bedrock-runtime")
 console = Console()
 
 
-def claude(streaming: bool, prompt):
-    modelId = "anthropic.claude-v2"
+class ConversationRole(Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+    def __str__(self):
+        return self.value
+
+
+def add_message(
+    messages: List[Dict[str, str]], role: ConversationRole, user_message: str
+):
+    messages.append({"role": str(role), "content": user_message})
+    return messages
+
+
+def claude(messages: List[Dict[str, str]]):
+    modelId = "anthropic.claude-3-sonnet-20240229-v1:0"
     body = json.dumps(
         {
-            "prompt": prompt,
-            "max_tokens_to_sample": 300,
+            "messages": messages,
+            "max_tokens": 2000,
             "temperature": 1,
             "top_k": 250,
             "top_p": 0.999,
@@ -27,29 +44,17 @@ def claude(streaming: bool, prompt):
     )
 
     with console.status("[bold green]Waiting for response..."):
-        if streaming:
-            response = bedrock.invoke_model_with_response_stream(modelId=modelId, body=body)
+        response = bedrock.invoke_model(modelId=modelId, body=body)
+        body = json.loads(response["body"].read())
+        response_message = body["content"][0]
 
-            event_stream = response["body"]
-            output = streaming_print(event_stream)
+        if response_message["type"] != "text":
+            raise RuntimeError(
+                "Unexpected response type to prompt: " + response_message["type"]
+            )
 
-        else:
-            response = bedrock.invoke_model(modelId=modelId, body=body)
-            body = json.loads(response["body"].read())
-            output = body["completion"]
+        output = response_message["text"]
 
-            formatted_print(output)
-
-    return output
-
-
-def streaming_print(event_stream):
-    output = ""
-    for raw_event in event_stream:
-        event = json.loads(raw_event["chunk"]["bytes"])
-        chunk = event["completion"]
-        output += chunk
-        print(chunk, end="")
     return output
 
 
@@ -58,17 +63,18 @@ def formatted_print(text):
 
 
 @click.command()
-@click.option("--streaming", is_flag=True, help="Enables streaming mode")
 @click.argument("args", nargs=-1)
-def main(streaming, args):
-    context = ""
+def main(args):
+    message_history = []
 
-    print("Hello! I am an AI assistant. Enter 'quit' or 'exit' at any time to exit. How may I help you today?")
+    print(
+        "Hello! I am an AI assistant powered by Claude and Amazon Bedrock. Enter 'quit' or 'exit' at any time to exit. How may I help you today?"
+    )
     print("(You can clear existing context by starting a query with 'new>')")
 
     while True:
         print()
-        if context == "" and args:
+        if message_history == [] and args:
             user_input = " ".join(args)
             print(f"> {user_input}")
         else:
@@ -79,14 +85,19 @@ def main(streaming, args):
             print("Goodbye!")
             sys.exit()
         if user_input.lower().startswith("new>"):
-            context = ""
+            message_history = []
 
-        prompt = f"{context}\n\nHuman: {user_input}\n\nAssistant:"
+        message_history = add_message(
+            message_history, ConversationRole.USER, user_input
+        )
 
-        response = claude(streaming, prompt)
+        response = claude(message_history)
+        formatted_print(response)
+        message_history = add_message(
+            message_history, ConversationRole.ASSISTANT, response
+        )
 
         print()
-        context += f"\n\nHuman: {user_input}\n\nAssistant: {response}"
 
 
 if __name__ == "__main__":
