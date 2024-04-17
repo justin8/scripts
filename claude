@@ -10,6 +10,8 @@ import click
 from rich.console import Console
 from rich.markdown import Markdown
 
+import sys
+
 bedrock = boto3.client("bedrock-runtime")
 console = Console()
 
@@ -74,9 +76,17 @@ def main(args):
 
     while True:
         print()
-        if message_history == [] and args:
+        if message_history == [] and not sys.stdin.isatty():
+            user_input = sys.stdin.read()
+            print(f"> {user_input}")
+        elif message_history == [] and args:
             user_input = " ".join(args)
             print(f"> {user_input}")
+        elif not sys.stdin.isatty():
+            print(
+                "Note that you can only do one-shot requests when providing input via stdin"
+            )
+            exit()
         else:
             user_input = input("> ")
 
