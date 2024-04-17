@@ -96,6 +96,7 @@ def main(args):
             sys.exit()
         if user_input.lower().startswith("new>"):
             message_history = []
+            continue
 
         message_history = add_message(
             message_history, ConversationRole.USER, user_input
