@@ -10,9 +10,9 @@ import click
 from rich.console import Console
 from rich.markdown import Markdown
 
+from botocore.config import Config
 import sys
 
-bedrock = boto3.client("bedrock-runtime")
 console = Console()
 
 
@@ -24,6 +24,42 @@ class ConversationRole(Enum):
         return self.value
 
 
+class Model(Enum):
+    CLAUDE3_SONNET = "anthropic.claude-3-sonnet-20240229-v1:0"
+    CLAUDE3_HAIKU = "anthropic.claude-3-haiku-20240307-v1:0"
+
+
+def available_models():
+    return [x.name.lower() for x in Model]
+
+
+def model_enum_from_input(value):
+    try:
+        return Model[value.upper()]
+    except KeyError:
+        raise click.BadParameter(
+            f"Invalid value: {value}. Allowed values are: {available_models}"
+        )
+
+
+def model_choice():
+    choices = [enum_member.name for enum_member in Model]
+    choice_help = ", ".join([f"'{choice}'" for choice in choices])
+
+    def choice_function(value):
+        try:
+            return Model[value.upper()]
+        except KeyError:
+            raise click.BadParameter(
+                f"Invalid value: {value}. Allowed values are: {choice_help}"
+            )
+
+    return (
+        click.Choice(choices, case_sensitive=False),
+        choice_function,
+    )
+
+
 def add_message(
     messages: List[Dict[str, str]], role: ConversationRole, user_message: str
 ):
@@ -31,8 +67,8 @@ def add_message(
     return messages
 
 
-def claude(messages: List[Dict[str, str]]):
-    modelId = "anthropic.claude-3-sonnet-20240229-v1:0"
+def invoke(bedrock, model: Model, messages: List[Dict[str, str]]):
+    modelId = model.value
     body = json.dumps(
         {
             "messages": messages,
@@ -66,11 +102,26 @@ def formatted_print(text):
 
 @click.command()
 @click.argument("args", nargs=-1)
-def main(args):
+@click.option("-r", "--region", help="The AWS region to use for requests")
+@click.option(
+    "-m",
+    "--model",
+    type=click.Choice(available_models(), case_sensitive=False),
+    default="claude3_sonnet",
+    help="The model to use for requests",
+)
+def main(args, region, model):
+    model = model_enum_from_input(model)
     message_history = []
 
+    config = Config()
+    if region:
+        config = Config(region_name=region)
+
+    bedrock = boto3.client("bedrock-runtime", config=config)
+
     print(
-        "Hello! I am an AI assistant powered by Claude and Amazon Bedrock. Enter 'quit' or 'exit' at any time to exit. How may I help you today?"
+        f"Hello! I am an AI assistant powered by Amazon Bedrock and using the model {model.value}. Enter 'quit' or 'exit' at any time to exit. How may I help you today?"
     )
     print("(You can clear existing context by starting a query with 'new>')")
 
@@ -102,7 +153,7 @@ def main(args):
             message_history, ConversationRole.USER, user_input
         )
 
-        response = claude(message_history)
+        response = invoke(bedrock, model, message_history)
         formatted_print(response)
         message_history = add_message(
             message_history, ConversationRole.ASSISTANT, response
