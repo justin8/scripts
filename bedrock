@@ -15,6 +15,16 @@ import sys
 
 console = Console()
 
+#
+# Shell completion
+#
+# Run the following to generate a static completion file:
+#     _BEDROCK_COMPLETE=zsh_source bedrock > ~/.bedrock-completion.zsh
+#
+# Then add the following to your ~/.zshrc:
+#     source ~/.bedrock-completion.zsh
+#
+
 
 class ConversationRole(Enum):
     USER = "user"
