@@ -13,25 +13,16 @@ fi
 
 
 mwinit_until_success() {
-	mwinit_life_mins=960
 	cookie="${HOME}/.midway/cookie"
-	if [[ -e $cookie ]]; then
-		age_mins=$((($(date +%s) - $(stat "${cookie}" -c %Y)) / 60))
-	fi
-
-	if [[ ! -e $cookie || $age_mins -gt $mwinit_life_mins || $1 == '-f' ]]; then
-		echo "Midway authentication required"
+	echo "Midway authentication required"
+	mwinit $MWINIT_FLAGS
+	ret=$?
+	while [ $ret != 0 ]; do
+		echo "Midway authentication failed. Please try again."
 		mwinit $MWINIT_FLAGS
 		ret=$?
-		while [ $ret != 0 ]; do
-			echo "Midway authentication failed. Please try again."
-			mwinit $MWINIT_FLAGS
-			ret=$?
-		done
-	else
-		echo "Midway authentication is up-to-date"
-	fi
+	done
 }
 
-mwinit_until_success $@
+mwinit_until_success "$@"
 ada cred update --once
