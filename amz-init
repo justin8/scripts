@@ -3,18 +3,12 @@
 MWINIT_FLAGS="-s"
 
 if [[ $(uname -a) =~ Linux ]]; then
-	OS=linux
 	MWINIT_FLAGS="$MWINIT_FLAGS -o"
-else
-	stat() {
-		gstat "$@"
-	}
 fi
 
 
 mwinit_until_success() {
-	cookie="${HOME}/.midway/cookie"
-	echo "Midway authentication required"
+	echo "Starting Midway authentication..."
 	mwinit $MWINIT_FLAGS
 	ret=$?
 	while [ $ret != 0 ]; do
