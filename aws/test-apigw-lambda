@@ -1,96 +1,88 @@
 #!/usr/bin/env python
 
 import json
-import click
+
 import boto3
+import click
+
 
 @click.command()
-@click.argument('function-arn')
+@click.argument("function-arn")
 def invoke_lambda(function_arn):
-    region = function_arn.split(':')[3]
-    lambda_client = boto3.client('lambda', region_name=region)
+    region = function_arn.split(":")[3]
+    lambda_client = boto3.client("lambda", region_name=region)
 
     dummy_event = {
-        "resource": "/{proxy+}",
-        "path": "/testResource",
+        "resource": "/",
+        "path": "/",
         "httpMethod": "GET",
         "headers": {
-            "Accept": "*/*",
-            "Authorization": "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-            "Content-Type": "application/json"
+            "accept": "*/*",
+            "Host": "some-domain.example.com",
+            "User-Agent": "curl/8.6.0",
+            "X-Amzn-Trace-Id": "Root=1-66a0e782-34dec5b661a606531159d198",
+            "X-Forwarded-For": "220.245.43.232",
+            "X-Forwarded-Port": "443",
+            "X-Forwarded-Proto": "https",
         },
         "multiValueHeaders": {
-            "Accept": [
-                "*/*"
-            ],
-            "Authorization": [
-                "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-            ],
-            "Content-Type": [
-                "application/json"
-            ]
+            "accept": ["*/*"],
+            "Host": ["some-domain.example.com"],
+            "User-Agent": ["curl/8.6.0"],
+            "X-Amzn-Trace-Id": ["Root=1-66a0e782-34dec5b661a606531159d198"],
+            "X-Forwarded-For": ["220.245.43.232"],
+            "X-Forwarded-Port": ["443"],
+            "X-Forwarded-Proto": ["https"],
         },
-        "queryStringParameters": {
-            "key1": "value1",
-            "key2": "value2"
-        },
-        "multiValueQueryStringParameters": {
-            "key1": [
-                "value1"
-            ],
-            "key2": [
-                "value2"
-            ]
-        },
-        "pathParameters": {
-            "proxy": "/testResource"
-        },
-        "stageVariables": {
-            "stageVarName": "stageVarValue"
-        },
+        "queryStringParameters": None,
+        "multiValueQueryStringParameters": None,
+        "pathParameters": None,
+        "stageVariables": None,
         "requestContext": {
-            "resourceId": "123456",
-            "resourcePath": "/{proxy+}",
+            "resourceId": "elch9p264g",
+            "resourcePath": "/",
             "httpMethod": "GET",
-            "extendedRequestId": "request-id",
-            "requestTime": "04/Mar/2020:19:27:47 +0000",
-            "path": "/prod/testResource",
-            "accountId": "123456789012",
+            "extendedRequestId": "bakcfF5DywMEk3A=",
+            "requestTime": "24/Jul/2024:11:37:38 +0000",
+            "path": "/",
+            "accountId": "185873083718",
             "protocol": "HTTP/1.1",
             "stage": "prod",
-            "domainPrefix": "id4k3r24o8",
-            "requestTimeEpoch": 1583347667056,
-            "requestId": "c6af9ac6-7b61-11ea-8cf4-13e8531f5e9a",
+            "domainPrefix": "some-domain",
+            "requestTimeEpoch": 1721821058885,
+            "requestId": "70617164-8532-49d3-abae-b4bad30bdc27",
             "identity": {
                 "cognitoIdentityPoolId": None,
                 "accountId": None,
                 "cognitoIdentityId": None,
                 "caller": None,
-                "sourceIp": "127.0.0.1",
+                "sourceIp": "220.245.43.232",
                 "principalOrgId": None,
                 "accessKey": None,
                 "cognitoAuthenticationType": None,
                 "cognitoAuthenticationProvider": None,
                 "userArn": None,
-                "userAgent": "Custom User Agent String",
-                "user": None
+                "userAgent": "curl/8.6.0",
+                "user": None,
             },
-            "domainName": "id4k3r24o8.execute-api.us-east-1.amazonaws.com",
-            "apiId": "id4k3r24o8"
+            "domainName": "some-domain.example.com",
+            "deploymentId": "e6rfjx",
+            "apiId": "vrpkxk4co0",
         },
-        "body": "{\"key1\":\"value1\",\"key2\":\"value2\"}",
-        "isBase64Encoded": False
+        "body": None,
+        "isBase64Encoded": False,
     }
 
     response = lambda_client.invoke(
         FunctionName=function_arn,
-        InvocationType='RequestResponse',
+        InvocationType="RequestResponse",
         Payload=json.dumps(dummy_event),
     )
 
-    response_payload = json.loads(response['Payload'].read().decode('utf-8'))
+    response_payload = json.loads(response["Payload"].read().decode("utf-8"))
     print("Lambda Function Response:")
     print(json.dumps(response_payload, indent=2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     invoke_lambda()
