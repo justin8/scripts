@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import os
+import shutil
+from datetime import datetime
+from pathlib import Path
+
+import click
+
+raw_file_extensions = [
+    ".3fr",  # Hasselblad
+    ".ari",  # ARRI
+    ".arw",  # Sony
+    ".bay",  # Casio
+    ".cap",  # Canon
+    ".cr2",  # Canon
+    ".cr3",  # Canon
+    ".crw",  # Canon
+    ".data",  # Olympus
+    ".dcs",  # Kodak
+    ".dng",  # Digital Negative (Adobe)
+    ".erf",  # Epson
+    ".fff",  # Hasselblad
+    ".gpr",  # GoPro
+    ".iiq",  # Phase One
+    ".k25",  # Kodak
+    ".kdc",  # Kodak
+    ".mef",  # Mamiya
+    ".mos",  # Leaf
+    ".mrw",  # Minolta
+    ".nef",  # Nikon
+    ".nrw",  # Nikon
+    ".obm",  # Olympus
+    ".orf",  # Olympus
+    ".pef",  # Pentax
+    ".raf",  # Fujifilm
+    ".raw",  # Panasonic, Leica
+    ".rw2",  # Panasonic
+    ".rwl",  # Leica
+    ".sr2",  # Sony
+    ".srf",  # Sony
+    ".x3f",  # Sigma
+]
+
+
+def is_raw_file(filename):
+    for ext in raw_file_extensions:
+        if filename.lower().endswith(ext):
+            return True
+    return False
+
+
+@click.command()
+@click.argument("source_path", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
+def main(source_path, dry_run):
+    home_dir = Path.home()
+    pictures_dir = home_dir / "Pictures"
+
+    print(f"Source path: {source_path}")
+    print(f"Home directory: {home_dir}")
+    print(f"Pictures directory: {pictures_dir}")
+
+    for root, _, files in os.walk(source_path):
+        print(f"Processing directory: {root}")
+        for file in files:
+            if is_raw_file(file):
+                file_path = os.path.join(root, file)
+                mod_time = os.path.getmtime(file_path)
+                mod_datetime = datetime.fromtimestamp(mod_time)
+
+                year_dir = pictures_dir / str(mod_datetime.year)
+                month_dir = year_dir / str(mod_datetime.month).zfill(2)
+                day_dir = month_dir / str(mod_datetime.day).zfill(2)
+                if not dry_run:
+                    os.makedirs(year_dir, exist_ok=True)
+                    os.makedirs(month_dir, exist_ok=True)
+                    os.makedirs(day_dir, exist_ok=True)
+
+                dest_path = month_dir / day_dir / file
+
+                if dest_path.exists():
+                    src_stat = os.stat(file_path)
+                    dest_stat = os.stat(dest_path)
+                    if (
+                        src_stat.st_size == dest_stat.st_size
+                        and src_stat.st_mtime == dest_stat.st_mtime
+                    ):
+                        print(
+                            f"{dest_path} already exists with same size and modification time, skipping copy"
+                        )
+                        continue
+
+                if dry_run:
+                    print(f"[dry-run] Would copy {file_path} to {dest_path}")
+                else:
+                    print(f"Copying {file_path} to {dest_path}")
+                    shutil.copy2(file_path, dest_path)
+
+
+if __name__ == "__main__":
+    main()
