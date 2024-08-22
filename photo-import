@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+from rich.progress import track
 
 raw_file_extensions = [
     ".3fr",  # Hasselblad
@@ -50,52 +51,63 @@ def is_raw_file(filename):
     return False
 
 
-@click.command()
-@click.argument("source_path", type=click.Path(exists=True))
-@click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
-def main(source_path, dry_run):
+def get_file_list(path):
+    file_list = []
+    for root, _, files in os.walk(path):
+        for file in files:
+            if is_raw_file(file):
+                file_list.append(os.path.join(root, file))
+    return file_list
+
+
+def get_destination_path(source_file):
+    file_name = os.path.basename(source_file)
     home_dir = Path.home()
     pictures_dir = home_dir / "Pictures"
 
-    print(f"Source path: {source_path}")
-    print(f"Home directory: {home_dir}")
-    print(f"Pictures directory: {pictures_dir}")
+    mod_time = os.path.getmtime(source_file)
+    mod_datetime = datetime.fromtimestamp(mod_time)
 
-    for root, _, files in os.walk(source_path):
-        print(f"Processing directory: {root}")
-        for file in files:
-            if is_raw_file(file):
-                file_path = os.path.join(root, file)
-                mod_time = os.path.getmtime(file_path)
-                mod_datetime = datetime.fromtimestamp(mod_time)
+    year_dir = pictures_dir / str(mod_datetime.year)
+    month_dir = year_dir / str(mod_datetime.month).zfill(2)
+    day_dir = month_dir / str(mod_datetime.day).zfill(2)
 
-                year_dir = pictures_dir / str(mod_datetime.year)
-                month_dir = year_dir / str(mod_datetime.month).zfill(2)
-                day_dir = month_dir / str(mod_datetime.day).zfill(2)
-                if not dry_run:
-                    os.makedirs(year_dir, exist_ok=True)
-                    os.makedirs(month_dir, exist_ok=True)
-                    os.makedirs(day_dir, exist_ok=True)
+    return day_dir / file_name
 
-                dest_path = month_dir / day_dir / file
 
-                if dest_path.exists():
-                    src_stat = os.stat(file_path)
-                    dest_stat = os.stat(dest_path)
-                    if (
-                        src_stat.st_size == dest_stat.st_size
-                        and src_stat.st_mtime == dest_stat.st_mtime
-                    ):
-                        print(
-                            f"{dest_path} already exists with same size and modification time, skipping copy"
-                        )
-                        continue
+@click.command()
+@click.argument("source_path", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
+@click.option("-v", "--verbose", is_flag=True, help="Verbose mode")
+def main(source_path, dry_run, verbose):
+    file_list = get_file_list(source_path)
 
-                if dry_run:
-                    print(f"[dry-run] Would copy {file_path} to {dest_path}")
-                else:
-                    print(f"Copying {file_path} to {dest_path}")
-                    shutil.copy2(file_path, dest_path)
+    for source_file in track(file_list, description="Processing..."):
+        destination = get_destination_path(source_file)
+        if not dry_run:
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+
+        if destination.exists():
+            src_stat = os.stat(source_file)
+            dest_stat = os.stat(destination)
+            if (
+                src_stat.st_size == dest_stat.st_size
+                and src_stat.st_mtime == dest_stat.st_mtime
+            ):
+                if verbose:
+                    print(
+                        f"{destination} already exists with same size and modification time, skipping copy"
+                    )
+                continue
+
+        if dry_run:
+            if verbose:
+                print(f"[dry-run] Would copy {source_file} to {destination}")
+            continue
+
+        if verbose:
+            print(f"Copying {source_file} to {destination}")
+        shutil.copy2(source_file, destination)
 
 
 if __name__ == "__main__":
