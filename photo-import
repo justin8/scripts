@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+from dateutil import parser
 from rich.progress import track
 
 raw_file_extensions = [
@@ -56,7 +57,8 @@ def get_file_list(path):
     for root, _, files in os.walk(path):
         for file in files:
             if is_raw_file(file):
-                file_list.append(os.path.join(root, file))
+                file_path = os.path.join(root, file)
+                file_list.append(file_path)
     file_list.sort()
     return file_list
 
@@ -80,13 +82,23 @@ def get_destination_path(source_file):
 @click.argument("source_path", type=click.Path(exists=True))
 @click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
 @click.option("-v", "--verbose", is_flag=True, help="Verbose mode")
-def main(source_path, dry_run, verbose):
+@click.option("-a", "--after", help="Only process files after the given date")
+def main(source_path, dry_run, verbose, after):
+    after_date = parser.parse(after) if after else None
     file_list = get_file_list(source_path)
 
     for source_file in track(file_list, description="Processing..."):
         destination = get_destination_path(source_file)
         if not dry_run:
             os.makedirs(os.path.dirname(destination), exist_ok=True)
+
+        if after_date:
+            mod_time = os.path.getmtime(source_file)
+            mod_datetime = datetime.fromtimestamp(mod_time)
+            if mod_datetime < after_date:
+                if verbose:
+                    print(f"{source_file} modified before {after_date}, skipping copy")
+                continue
 
         if destination.exists():
             src_stat = os.stat(source_file)
