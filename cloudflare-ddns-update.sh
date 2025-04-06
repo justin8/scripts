@@ -41,7 +41,7 @@ echo "Current IP4 is $ip4"
 echo "Current IP6 is $ip6"
 
 update4=true
-update6=true
+update6=false
 host_response="$(host "$dns_record" 1.1.1.1)"
 
 if echo "$host_response" | grep "has address" | grep "$ip4"; then
