@@ -15,6 +15,10 @@ dns_record=$2
 ## Cloudflare authentication details; either update the script to store here or input via CLI
 cloudflare_api_key=$3
 
+## Optionally Enable IPV6 support
+update6=${4:-false}
+update4=true
+
 if [[ -z $zone ]] || [[ -z $dns_record ]] || [[ -z $cloudflare_api_key ]]; then
 	echo "Error: Please provide the zone, DNS record and Cloudflare API key!"
 	echo
@@ -40,8 +44,6 @@ ip6=$(curl -s -X GET -6 https://ifconfig.co/)
 echo "Current IP4 is $ip4"
 echo "Current IP6 is $ip6"
 
-update4=true
-update6=false
 host_response="$(host "$dns_record" 1.1.1.1)"
 
 if echo "$host_response" | grep "has address" | grep "$ip4"; then
