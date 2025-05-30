@@ -3,20 +3,26 @@
 MWINIT_FLAGS="-s"
 
 if [[ $(uname -a) =~ Linux ]]; then
-	MWINIT_FLAGS="$MWINIT_FLAGS -o"
+  MWINIT_FLAGS="$MWINIT_FLAGS -o"
 fi
 
-
 mwinit_until_success() {
-	echo "Starting Midway authentication..."
-	mwinit $MWINIT_FLAGS
-	ret=$?
-	while [ $ret != 0 ]; do
-		echo "Midway authentication failed. Please try again."
-		mwinit $MWINIT_FLAGS
-		ret=$?
-	done
+  echo "Starting Midway authentication..."
+  mwinit $MWINIT_FLAGS
+  ret=$?
+  while [ $ret != 0 ]; do
+    echo "Midway authentication failed. Please try again."
+    mwinit $MWINIT_FLAGS
+    ret=$?
+  done
 }
 
 mwinit_until_success "$@"
+
+echo "Updating crednetials for default profile"
 ada cred update --once
+
+for profile in $(cat ~/.config/ada/profile.json | jq -r '.Profiles[].Profile'); do
+  echo "Updating credentials for profile $profile"
+  ada cred update --once --profile $profile
+done
