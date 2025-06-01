@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ -z "$PROTON_VERSION" ]; then
+  PROTON_VERSION="Proton - Experimental"
+fi
+
+export STEAM_COMPAT_CLIENT_INSTALL_PATH=$HOME/.steam/steam
+PROTON_DIR="${STEAM_COMPAT_CLIENT_INSTALL_PATH}/steamapps/common/${PROTON_VERSION}"
+PROTON_PATH="${PROTON_DIR}/proton"
+export STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH}/steamapps/compatdata/${1}/pfx"
+echo -e "\e[32m\e[1mUSING app specific environment for APPID: $1\e[0m"
+
+shift
+"$PROTON_PATH" run "$@"
