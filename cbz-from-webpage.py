@@ -1,4 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "beautifulsoup4",
+#     "click",
+#     "requests",
+# ]
+# ///
 
 import logging
 import os
@@ -135,7 +143,11 @@ def download_images(url):
 
     # Find all <img> tags in the parsed HTML
     img_tags = soup.find_all("img")
-    image_urls = [img["src"] for img in img_tags if any(value in img["src"] for value in path_filters) ]
+    image_urls = [
+        img["src"]
+        for img in img_tags
+        if any(value in img["src"] for value in path_filters)
+    ]
     logging.debug("Found the following image URLs: %s", image_urls)
 
     image_prefix = find_prefix(image_urls)
