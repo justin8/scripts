@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if ! [[ $PAGER ]]; then
+  export PAGER=less
+fi
+
+if which bat &>/dev/null; then
+  export PAGER=bat
+fi
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: $0 <search string> <git log options>"
+  echo "Example:"
+  echo " > $0 collation"
+  echo
+  echo "git log options are anything valid for 'git log', for example:"
+  echo " > $0 collation --since='1 month ago'"
+  exit 1
+fi
+
+search_term="$1"
+shift
+
+hashes="$(git log --grep="$search_term" --format="%H" "$@")"
+
+for hash in $hashes; do
+  git show --color $hash
+  echo --------------------------------------------------------------------------------
+done | $PAGER
