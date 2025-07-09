@@ -1,0 +1,15 @@
+#!/bin/bash
+
+vault="$1"
+date_file="/tmp/open-obsidian-daily-note-at-start-of-day.last-run-date"
+current_date=$(date +%Y-%m-%d)
+uri="obsidian://daily"
+
+if [[ $vault ]]; then 
+    uri+="?vault=$vault"
+fi
+
+if [[ ! -f "$date_file" ]] || [[ "$(cat "$date_file" 2>/dev/null)" != "$current_date" ]]; then
+    open "$uri"
+    echo "$current_date" > "$date_file"
+fi
