@@ -10,12 +10,15 @@
 
 import os
 import shutil
+import glob
 from datetime import datetime
 from pathlib import Path
 
 import click
 from dateutil import parser
 from rich.progress import track
+
+CONTEXT_SETTINGS = dict(help_option_names=["--help", "-h"])
 
 raw_file_extensions = [
     ".3fr",  # Hasselblad
@@ -71,6 +74,16 @@ def get_file_list(path):
     return file_list
 
 
+def find_dcim_folders():
+    """Find DCIM folders under /Volumes/*/"""
+    dcim_paths = []
+    for volume in glob.glob("/Volumes/*/"):
+        dcim_path = os.path.join(volume, "DCIM")
+        if os.path.isdir(dcim_path):
+            dcim_paths.append(dcim_path)
+    return dcim_paths
+
+
 def get_destination_path(source_file):
     file_name = os.path.basename(source_file)
     home_dir = Path.home()
@@ -86,14 +99,30 @@ def get_destination_path(source_file):
     return day_dir / file_name
 
 
-@click.command()
-@click.argument("source_path", type=click.Path(exists=True))
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("source_path", type=click.Path(exists=True), required=False)
 @click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
 @click.option("-v", "--verbose", is_flag=True, help="Verbose mode")
 @click.option("-a", "--after", help="Only process files after the given date")
 def main(source_path, dry_run, verbose, after):
     after_date = parser.parse(after) if after else None
-    file_list = get_file_list(source_path)
+    
+    # If no source path is provided, find DCIM folders
+    if not source_path:
+        dcim_folders = find_dcim_folders()
+        if not dcim_folders:
+            click.echo("No DCIM folders found under /Volumes/*/")
+            return
+        if verbose:
+            click.echo(f"Found DCIM folders: {', '.join(dcim_folders)}")
+        
+        # Process all DCIM folders
+        all_files = []
+        for folder in dcim_folders:
+            all_files.extend(get_file_list(folder))
+        file_list = all_files
+    else:
+        file_list = get_file_list(source_path)
 
     for source_file in track(file_list, description="Processing..."):
         destination = get_destination_path(source_file)
