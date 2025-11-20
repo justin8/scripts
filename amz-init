@@ -19,7 +19,7 @@ mwinit_until_success() {
 
 mwinit_until_success "$@"
 
-echo "Updating crednetials for default profile"
+echo "Updating credentials for default profile"
 ada cred update --once
 
 for profile in $(cat ~/.config/ada/profile.json | jq -r '.Profiles[].Profile'); do
