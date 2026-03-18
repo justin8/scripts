@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Nix Maintenance: Deletes old generations, garbage-collects, and optimizes the store.
+LOG_FILE="$HOME/.nix-maintenance.log"
+echo "--- Nix Cleanup Started: $(date) ---" >"$LOG_FILE"
+nix-env --delete-generations old >>"$LOG_FILE" 2>&1
+nix-collect-garbage -d >>"$LOG_FILE" 2>&1
+nix-store --optimise >>"$LOG_FILE" 2>&1
+echo "--- Nix Cleanup Completed: $(date) ---" >>"$LOG_FILE"
