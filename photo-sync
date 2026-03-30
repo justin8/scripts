@@ -1,0 +1,159 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "click",
+#     "rich",
+# ]
+# ///
+
+import os
+import shutil
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
+import click
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
+
+CONTEXT_SETTINGS = dict(help_option_names=["--help", "-h"])
+console = Console()
+
+NAS_URL = "smb://storage.dray.id.au/photos"
+MOUNT_PATH = Path("/Volumes/photos")
+DEST_ROOT = MOUNT_PATH / "Raws"
+SOURCE_ROOT = Path.home() / "Pictures"
+
+
+def is_mounted(path: Path) -> bool:
+    """Check if the given path is a mount point."""
+    return os.path.ismount(str(path))
+
+
+def mount_nas():
+    """Mount the NAS using osascript."""
+    if is_mounted(MOUNT_PATH):
+        return True
+    
+    console.print(f"[yellow]Mounting {NAS_URL}...[/yellow]")
+    try:
+        subprocess.run(["osascript", "-e", f'mount volume "{NAS_URL}"'], check=True, capture_output=True)
+        # Wait a bit for the mount to appear in the filesystem
+        import time
+        for _ in range(5):
+            if is_mounted(MOUNT_PATH):
+                return True
+            time.sleep(1)
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error mounting NAS: {e}[/red]")
+        return False
+    
+    return is_mounted(MOUNT_PATH)
+
+
+def should_copy(src: Path, dest: Path) -> bool:
+    """Determine if a file should be copied (rsync-like logic)."""
+    if not dest.exists():
+        return True
+    
+    src_stat = src.stat()
+    dest_stat = dest.stat()
+    
+    # Check size
+    if src_stat.st_size != dest_stat.st_size:
+        return True
+    
+    # Check mtime (with 1-second tolerance for SMB)
+    if abs(src_stat.st_mtime - dest_stat.st_mtime) > 1:
+        return True
+    
+    return False
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option("--year", help="Year to sync (default: current year)")
+@click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
+@click.option("-v", "--verbose", is_flag=True, help="Verbose mode")
+@click.option("--force", is_flag=True, help="Force mount if not mounted")
+def main(year, dry_run, verbose, force):
+    if not year:
+        year = str(datetime.now().year)
+    
+    source_dir = SOURCE_ROOT / year
+    dest_dir = DEST_ROOT / year
+    
+    if not source_dir.exists():
+        console.print(f"[red]Source directory {source_dir} does not exist.[/red]")
+        return
+
+    # Check mount
+    if not is_mounted(MOUNT_PATH):
+        if not mount_nas():
+            console.print(f"[red]NAS is not mounted at {MOUNT_PATH} and mounting failed.[/red]")
+            return
+    
+    if not dest_dir.parent.exists():
+         console.print(f"[red]Destination root {dest_dir.parent} does not exist on mount.[/red]")
+         return
+
+    console.print(f"[blue]Syncing {source_dir} to {dest_dir}[/blue]")
+    
+    # Find all files to sync
+    files_to_sync = []
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task(description="Scanning files...", total=None)
+        
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                if file.startswith('.'):
+                    continue
+                
+                src_file = Path(root) / file
+                rel_path = src_file.relative_to(source_dir)
+                dest_file = dest_dir / rel_path
+                
+                if should_copy(src_file, dest_file):
+                    files_to_sync.append((src_file, dest_file))
+        
+        progress.update(task, description=f"Found {len(files_to_sync)} files to sync.")
+
+    if not files_to_sync:
+        console.print("[green]Everything is up to date.[/green]")
+        return
+
+    if dry_run:
+        console.print(f"[yellow]Dry run: would sync {len(files_to_sync)} files.[/yellow]")
+        if verbose:
+            for src, dest in files_to_sync:
+                console.print(f"  {src} -> {dest}")
+        return
+
+    # Perform the sync
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        task = progress.add_task(description="Syncing...", total=len(files_to_sync))
+        
+        for src, dest in files_to_sync:
+            if verbose:
+                console.print(f"Copying {src.name}...")
+            
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+            progress.advance(task)
+
+    console.print(f"[green]Successfully synced {len(files_to_sync)} files.[/green]")
+
+
+if __name__ == "__main__":
+    main()
