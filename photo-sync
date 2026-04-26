@@ -20,7 +20,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, Downlo
 CONTEXT_SETTINGS = dict(help_option_names=["--help", "-h"])
 console = Console()
 
-NAS_URL = "smb://storage.dray.id.au/photos"
+NAS_URL = "smb://storage.local/photos"
 MOUNT_PATH = Path("/Volumes/photos")
 DEST_ROOT = MOUNT_PATH / "Raws"
 SOURCE_ROOT = Path.home() / "Pictures"
