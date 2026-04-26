@@ -10,12 +10,22 @@
 import os
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
+from rich.filesize import decimal
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    DownloadColumn,
+    TransferSpeedColumn,
+    TimeRemainingColumn,
+)
 
 CONTEXT_SETTINGS = dict(help_option_names=["--help", "-h"])
 console = Console()
@@ -35,12 +45,15 @@ def mount_nas():
     """Mount the NAS using osascript."""
     if is_mounted(MOUNT_PATH):
         return True
-    
+
     console.print(f"[yellow]Mounting {NAS_URL}...[/yellow]")
     try:
-        subprocess.run(["osascript", "-e", f'mount volume "{NAS_URL}"'], check=True, capture_output=True)
+        subprocess.run(
+            ["osascript", "-e", f'mount volume "{NAS_URL}"'],
+            check=True,
+            capture_output=True,
+        )
         # Wait a bit for the mount to appear in the filesystem
-        import time
         for _ in range(5):
             if is_mounted(MOUNT_PATH):
                 return True
@@ -48,27 +61,43 @@ def mount_nas():
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Error mounting NAS: {e}[/red]")
         return False
-    
+
     return is_mounted(MOUNT_PATH)
 
 
-def should_copy(src: Path, dest: Path) -> bool:
+def should_copy(src: Path, dest: Path) -> tuple[bool, int]:
     """Determine if a file should be copied (rsync-like logic)."""
-    if not dest.exists():
-        return True
-    
     src_stat = src.stat()
+    size = src_stat.st_size
+
+    if not dest.exists():
+        return True, size
+
     dest_stat = dest.stat()
-    
+
     # Check size
-    if src_stat.st_size != dest_stat.st_size:
-        return True
-    
+    if size != dest_stat.st_size:
+        return True, size
+
     # Check mtime (with 1-second tolerance for SMB)
     if abs(src_stat.st_mtime - dest_stat.st_mtime) > 1:
-        return True
-    
-    return False
+        return True, size
+
+    return False, size
+
+
+def copy_with_progress(src: Path, dest: Path, progress: Progress, task_id):
+    """Copy a file and update the progress bar."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(src, "rb") as fsrc:
+        with open(dest, "wb") as fdest:
+            while True:
+                buf = fsrc.read(1024 * 1024)  # 1MB chunks
+                if not buf:
+                    break
+                fdest.write(buf)
+                progress.advance(task_id, advance=len(buf))
+    shutil.copystat(src, dest)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -79,10 +108,10 @@ def should_copy(src: Path, dest: Path) -> bool:
 def main(year, dry_run, verbose, force):
     if not year:
         year = str(datetime.now().year)
-    
+
     source_dir = SOURCE_ROOT / year
     dest_dir = DEST_ROOT / year
-    
+
     if not source_dir.exists():
         console.print(f"[red]Source directory {source_dir} does not exist.[/red]")
         return
@@ -90,37 +119,44 @@ def main(year, dry_run, verbose, force):
     # Check mount
     if not is_mounted(MOUNT_PATH):
         if not mount_nas():
-            console.print(f"[red]NAS is not mounted at {MOUNT_PATH} and mounting failed.[/red]")
+            console.print(
+                f"[red]NAS is not mounted at {MOUNT_PATH} and mounting failed.[/red]"
+            )
             return
-    
+
     if not dest_dir.parent.exists():
-         console.print(f"[red]Destination root {dest_dir.parent} does not exist on mount.[/red]")
-         return
+        console.print(
+            f"[red]Destination root {dest_dir.parent} does not exist on mount.[/red]"
+        )
+        return
 
     console.print(f"[blue]Syncing {source_dir} to {dest_dir}[/blue]")
-    
+
     # Find all files to sync
     files_to_sync = []
-    
+    total_bytes = 0
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         transient=True,
     ) as progress:
         task = progress.add_task(description="Scanning files...", total=None)
-        
+
         for root, _, files in os.walk(source_dir):
             for file in files:
-                if file.startswith('.'):
+                if file.startswith("."):
                     continue
-                
+
                 src_file = Path(root) / file
                 rel_path = src_file.relative_to(source_dir)
                 dest_file = dest_dir / rel_path
-                
-                if should_copy(src_file, dest_file):
-                    files_to_sync.append((src_file, dest_file))
-        
+
+                is_needed, size = should_copy(src_file, dest_file)
+                if is_needed:
+                    files_to_sync.append((src_file, dest_file, size))
+                    total_bytes += size
+
         progress.update(task, description=f"Found {len(files_to_sync)} files to sync.")
 
     if not files_to_sync:
@@ -128,31 +164,33 @@ def main(year, dry_run, verbose, force):
         return
 
     if dry_run:
-        console.print(f"[yellow]Dry run: would sync {len(files_to_sync)} files.[/yellow]")
+        console.print(
+            f"[yellow]Dry run: would sync {len(files_to_sync)} files ({decimal(total_bytes)}).[/yellow]"
+        )
         if verbose:
-            for src, dest in files_to_sync:
-                console.print(f"  {src} -> {dest}")
+            for src, dest, size in files_to_sync:
+                console.print(f"  {src} -> {dest} ({decimal(size)})")
         return
 
     # Perform the sync
     with Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
-        "[progress.percentage]{task.percentage:>3.0f}%",
+        DownloadColumn(),
         TransferSpeedColumn(),
         TimeRemainingColumn(),
     ) as progress:
-        task = progress.add_task(description="Syncing...", total=len(files_to_sync))
-        
-        for src, dest in files_to_sync:
+        task = progress.add_task(description="Syncing...", total=total_bytes)
+
+        for src, dest, size in files_to_sync:
             if verbose:
                 console.print(f"Copying {src.name}...")
-            
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest)
-            progress.advance(task)
 
-    console.print(f"[green]Successfully synced {len(files_to_sync)} files.[/green]")
+            copy_with_progress(src, dest, progress, task)
+
+    console.print(
+        f"[green]Successfully synced {len(files_to_sync)} files ({decimal(total_bytes)}).[/green]"
+    )
 
 
 if __name__ == "__main__":
