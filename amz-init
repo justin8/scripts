@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MWINIT_FLAGS="-s"
+MWINIT_FLAGS="-s -f"
 
 if [[ $(uname -a) =~ Linux ]]; then
   MWINIT_FLAGS="$MWINIT_FLAGS -o"
