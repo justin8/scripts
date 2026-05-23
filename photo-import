@@ -11,14 +11,26 @@
 import os
 import shutil
 import glob
+import time
 from datetime import datetime
 from pathlib import Path
 
 import click
 from dateutil import parser
-from rich.progress import track
+from rich.console import Console
+from rich.filesize import decimal
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    DownloadColumn,
+    TransferSpeedColumn,
+    TimeRemainingColumn,
+)
 
 CONTEXT_SETTINGS = dict(help_option_names=["--help", "-h"])
+console = Console()
 
 raw_file_extensions = [
     ".3fr",  # Hasselblad
@@ -99,6 +111,20 @@ def get_destination_path(source_file):
     return day_dir / file_name
 
 
+def copy_with_progress(src: Path, dest: Path, progress: Progress, task_id):
+    """Copy a file and update the progress bar."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(src, "rb") as fsrc:
+        with open(dest, "wb") as fdest:
+            while True:
+                buf = fsrc.read(1024 * 1024)  # 1MB chunks
+                if not buf:
+                    break
+                fdest.write(buf)
+                progress.advance(task_id, advance=len(buf))
+    shutil.copystat(src, dest)
+
+
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("source_path", type=click.Path(exists=True), required=False)
 @click.option("--dry-run", is_flag=True, help="Dry run mode (don't copy files)")
@@ -106,16 +132,16 @@ def get_destination_path(source_file):
 @click.option("-a", "--after", help="Only process files after the given date")
 def main(source_path, dry_run, verbose, after):
     after_date = parser.parse(after) if after else None
-    
+
     # If no source path is provided, find DCIM folders
     if not source_path:
         dcim_folders = find_dcim_folders()
         if not dcim_folders:
-            click.echo("No DCIM folders found under /Volumes/*/")
+            console.print("[red]No DCIM folders found under /Volumes/*/.[/red]")
             return
         if verbose:
-            click.echo(f"Found DCIM folders: {', '.join(dcim_folders)}")
-        
+            console.print(f"Found DCIM folders: {', '.join(dcim_folders)}")
+
         # Process all DCIM folders
         all_files = []
         for folder in dcim_folders:
@@ -124,41 +150,82 @@ def main(source_path, dry_run, verbose, after):
     else:
         file_list = get_file_list(source_path)
 
-    for source_file in track(file_list, description="Processing..."):
-        destination = get_destination_path(source_file)
-        if not dry_run:
-            os.makedirs(os.path.dirname(destination), exist_ok=True)
+    files_to_copy = []
+    total_bytes = 0
 
-        if after_date:
-            mod_time = os.path.getmtime(source_file)
-            mod_datetime = datetime.fromtimestamp(mod_time)
-            if mod_datetime < after_date:
-                if verbose:
-                    print(f"{source_file} modified before {after_date}, skipping copy")
-                continue
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task(description="Scanning files...", total=len(file_list))
 
-        if destination.exists():
-            src_stat = os.stat(source_file)
-            dest_stat = os.stat(destination)
-            if (
-                src_stat.st_size == dest_stat.st_size
-                and src_stat.st_mtime == dest_stat.st_mtime
-            ):
-                if verbose:
-                    print(
-                        f"{destination} already exists with same size and modification time, skipping copy"
-                    )
-                continue
+        for source_file in file_list:
+            source_file = Path(source_file)
+            destination = get_destination_path(source_file)
 
+            if after_date:
+                mod_time = source_file.stat().st_mtime
+                mod_datetime = datetime.fromtimestamp(mod_time)
+                if mod_datetime < after_date:
+                    if verbose:
+                        console.print(
+                            f"{source_file} modified before {after_date}, skipping"
+                        )
+                    progress.advance(task)
+                    continue
+
+            if destination.exists():
+                src_stat = source_file.stat()
+                dest_stat = destination.stat()
+                if (
+                    src_stat.st_size == dest_stat.st_size
+                    and abs(src_stat.st_mtime - dest_stat.st_mtime) <= 1
+                ):
+                    if verbose:
+                        console.print(f"{destination.name} already exists, skipping")
+                    progress.advance(task)
+                    continue
+
+            size = source_file.stat().st_size
+            files_to_copy.append((source_file, destination, size))
+            total_bytes += size
+            progress.advance(task)
+
+        progress.update(task, description=f"Found {len(files_to_copy)} files to import.")
+
+    if not files_to_copy:
+        console.print("[green]Nothing to import.[/green]")
+        return
+
+    if dry_run:
+        console.print(
+            f"[yellow]Dry run: would import {len(files_to_copy)} files ({decimal(total_bytes)}).[/yellow]"
+        )
         if verbose:
-            if dry_run:
-                print(f"[dry-run] Would copy {source_file} to {destination}")
-            else:
-                print(f"Copying {source_file} to {destination}")
+            for src, dest, size in files_to_copy:
+                console.print(f"  {src} -> {dest} ({decimal(size)})")
+        return
 
-        if dry_run:
-            continue
-        shutil.copy2(source_file, destination)
+    # Perform the import
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        task = progress.add_task(description="Importing...", total=total_bytes)
+
+        for src, dest, size in files_to_copy:
+            if verbose:
+                console.print(f"Importing {src.name}...")
+
+            copy_with_progress(src, dest, progress, task)
+
+    console.print(
+        f"[green]Successfully imported {len(files_to_copy)} files ({decimal(total_bytes)}).[/green]"
+    )
 
 
 if __name__ == "__main__":
